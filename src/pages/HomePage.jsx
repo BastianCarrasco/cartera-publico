@@ -288,7 +288,7 @@ export default function HomePage() {
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 ">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">
-                ¿Quieres ir a otro lado?
+                ¿Quieres ser parte de esto?
               </h2>
               {/* NUEVO BOTÓN PARA EL FORMULARIO DE PERFIL DE PROYECTO */}
               <div className="relative">
