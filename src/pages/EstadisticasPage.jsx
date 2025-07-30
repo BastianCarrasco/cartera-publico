@@ -1391,7 +1391,6 @@ export default function EstadisticasPage() {
             {/* Fin de la COLUMNA 2 */}
             {/* COLUMNA 3: Gráficos de Barras (Proyectos por Temática, Proyectos por Tipo de Fondo) */}
             <div className="lg:col-span-1 space-y-8">
-              {" "}
               {/* Ocupa 1/3 del ancho, y deja espacio entre gráficos */}
               {/* Proyectos por Temática (Bar Chart horizontal) */}
               <div className="bg-white rounded-lg shadow-lg p-6">
