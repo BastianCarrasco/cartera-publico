@@ -18,6 +18,7 @@ import {
   Plus,
   ArrowRight,
   ContactRound,
+  CircleDollarSign,
   FolderOpen,
   FolderCheck,
   FileDown,
@@ -179,50 +180,6 @@ export default function HomePage() {
               Gestiona y monitorea todos tus proyectos desde un solo lugar
             </p>
           </div>
-          {/* Botones de exportar */}
-          <div className="flex flex-wrap gap-2 mt-4 sm:mt-0">
-            <Button
-              variant="secondary"
-              className="bg-red-500 text-md text-white hover:bg-red-600 cursor-pointer"
-              onClick={generarPDF}
-              disabled={loadingExportPDF} // Deshabilitar mientras carga
-            >
-              {loadingExportPDF ? (
-                // **** Spinner para el botón PDF ****
-                <Spinner size={16} className="text-white mr-2" />
-              ) : (
-                <div className="bg-white rounded-full p-1 mr-2 flex items-center justify-center w-6 h-6">
-                  <img
-                    src={pdfIcon} // Usar la importación del icono
-                    alt="PDF icon"
-                    className="w-4 h-4"
-                  />
-                </div>
-              )}
-              Exportar Cartera
-            </Button>
-
-            <Button
-              variant="secondary"
-              className="bg-green-500 text-md text-white hover:bg-green-600 cursor-pointer"
-              onClick={generarExcel}
-              disabled={loadingExportExcel} // Deshabilitar mientras carga
-            >
-              {loadingExportExcel ? (
-                // **** Spinner para el botón Excel ****
-                <Spinner size={16} className="text-white mr-2" />
-              ) : (
-                <div className="bg-white rounded-full p-1 mr-2 flex items-center justify-center w-6 h-6">
-                  <img
-                    src={excelIcon} // Usar la importación del icono
-                    alt="Excel icon"
-                    className="w-4 h-4"
-                  />
-                </div>
-              )}
-              Exportar Cartera
-            </Button>
-          </div>
         </div>
 
         {/* Quick Stats - Los divs que contendrán los spinners */}
@@ -329,36 +286,17 @@ export default function HomePage() {
 
                 <Button
                   className="h-20 bg-gradient-to-r from-[#2463a2] to-[#669dd8] text-white justify-start p-6 group transition-transform hover:scale-[1.02] cursor-pointer"
-                  onClick={() => navigate("/anadir-proyectos")}
                   size="lg"
+                  onClick={() => navigate("/fondos")}
                 >
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 rounded-lg flex items-center justify-center transition-colors">
-                      <Plus className="w-6 h-6" />
+                      <CircleDollarSign className="w-6 h-6" />
                     </div>
                     <div className="text-left">
-                      <div className="font-semibold">Crear Proyecto</div>
+                      <div className="font-semibold">Ver Fondos</div>
                       <div className="text-sm opacity-90">
-                        Inicia algo nuevo
-                      </div>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 ml-auto group-hover:translate-x-1 transition-transform" />
-                </Button>
-
-                <Button
-                  className="h-20 bg-gradient-to-r from-[#2463a2] to-[#669dd8] text-white justify-start p-6 group transition-transform hover:scale-[1.02] cursor-pointer"
-                  size="lg"
-                  onClick={() => navigate("/editar-proyectos")}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-lg flex items-center justify-center transition-colors">
-                      <PenTool className="w-6 h-6" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-semibold">Editar Proyectos</div>
-                      <div className="text-sm opacity-90">
-                        Actualiza información
+                        Revisa los instrumentos
                       </div>
                     </div>
                   </div>
