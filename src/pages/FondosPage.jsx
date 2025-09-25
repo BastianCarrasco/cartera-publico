@@ -387,7 +387,7 @@ export default function FondosPage() {
             </p>
           </div>
           {/* Botón para crear fondo */}
-          <Button
+          {/* <Button
             className="bg-blue-600  cursor-pointer text-white hover:bg-blue-700"
             onClick={() => {
               resetNewFondoForm();
@@ -396,7 +396,7 @@ export default function FondosPage() {
           >
             <Plus className="w-4 h-4 mr-2" />
             Crear Fondo
-          </Button>
+          </Button> */}
         </div>
 
         {/* Filtros */}
@@ -606,7 +606,7 @@ export default function FondosPage() {
                           {fondo.estado_vigencia}
                         </span>
                       </div>
-                      <div className="flex justify-center items-center">
+                      {/* <div className="flex justify-center items-center">
                         <Button
                           size="sm"
                           variant="ghost"
@@ -619,7 +619,7 @@ export default function FondosPage() {
                         >
                           <Trash2 className="h-5 w-5" />
                         </Button>
-                      </div>
+                      </div> */}
                     </div>
                     {/* Contenido expandido alineado */}
                     <AccordionContent asChild>
