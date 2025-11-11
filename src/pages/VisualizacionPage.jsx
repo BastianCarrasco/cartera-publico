@@ -14,38 +14,34 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search,
   Filter,
-  Users, // Para el líder del proyecto
-  Tag, // Para temáticas (puede ser genérico)
+  Users,
+  Tag,
   ArrowDownWideNarrow,
   ArrowUpWideNarrow,
-  Calendar, // Para la fecha
-  Zap, // Rayo para "Almacenamiento Energía"
-  FlaskRound, // Para "Hidrógeno"
-  Lightbulb, // Para "Contaminación Lumínica"
+  Calendar,
+  Zap,
+  FlaskRound,
+  Lightbulb,
   XCircle,
   Info,
   Pickaxe,
   Dna,
   BatteryCharging,
-  GraduationCap, // Icono para Académicos Involucrados
-  ClipboardList, // Icono para Detalles del Proyecto
-  Banknote, // Icono para Monto solicitado
+  GraduationCap,
+  ClipboardList,
+  Banknote,
 } from "lucide-react";
 
 // Componentes de Shadcn UI para el modal (Dialog)
 import {
   Dialog,
   DialogContent,
-  DialogDescription, // Puede que no necesitemos DialogDescription
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  // DialogTrigger no se usará directamente en el botón de la Card
 } from "@/components/ui/dialog";
 
 import { Spinner } from "@/components/ui/spinner";
-import funcionesService from "../api/funciones.js";
-import estudiantesService from "../api/estudiantes.js";
-import academicosService from "../api/academicos.js"; // Necesario para getFotosPorAcademico
 import { useError } from "@/contexts/ErrorContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -56,12 +52,16 @@ import ProjectCard, {
   renderInstitucionLogo,
 } from "./components/ProjectCard.jsx";
 
+// Import the new API service
+import cartera_proyecto from "@/api/cartera_proyecto.js"; // Correct path to your service
+
+// The API URL is now managed within cartera_proyecto.js, so we don't need it here.
+// const PROJECTS_API_URL = import.meta.env.VITE_PROJECTS_API_URL; // Remove this line
+
 export default function VisualizacionPage() {
   const [orden, setOrden] = useState("reciente");
   const [projectsData, setProjectsData] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState("todos");
-  const [academicosMap, setAcademicosMap] = useState({});
-  const [estudiantesMap, setEstudiantesMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [errorLocal, setErrorLocal] = useState(null);
   const { setError: setErrorGlobal } = useError();
@@ -77,111 +77,61 @@ export default function VisualizacionPage() {
   // **** Estados para el Modal de Detalles ****
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
-  const [academicosFotos, setAcademicosFotos] = useState([]); // Fotos de académicos del proyecto seleccionado
-  const academicosFotosCache = useRef({});
-  const [loadingFotos, setLoadingFotos] = useState(false); // Estado de carga para las fotos
+  const [loadingFotos, setLoadingFotos] = useState(false);
 
   // Helper para formatear fecha a "31 de diciembre de 2024" para el modal
   const formatDateFull = useCallback((dateString) => {
     if (!dateString) return "Sin fecha";
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date)) return "Fecha Inválida";
-      const options = { year: "numeric", month: "long", day: "numeric" };
-      return date.toLocaleDateString("es-CL", options);
-    } catch (e) {
-      console.warn(
-        "Invalid date string for modal (full format):",
-        dateString,
-        e
-      );
-      return "Fecha Inválida";
+    // The new API uses "sept-24" format. We need to parse it.
+    // This is a simplistic parser, for real-world scenarios, consider a robust date library.
+    const monthMap = {
+      "ene-": "01",
+      "feb-": "02",
+      "mar-": "03",
+      "abr-": "04",
+      "may-": "05",
+      "jun-": "06",
+      "jul-": "07",
+      "ago-": "08",
+      "sept-": "09",
+      "oct-": "10",
+      "nov-": "11",
+      "dic-": "12",
+    };
+
+    let date = null;
+    if (
+      dateString.match(
+        /^(ene|feb|mar|abr|may|jun|jul|ago|sept|oct|nov|dic)-\d{2}$/i
+      )
+    ) {
+      const [monthStr, yearStr] = dateString.split("-");
+      const monthNum = monthMap[monthStr.toLowerCase() + "-"]; // Add '-' back for map key
+      if (monthNum) {
+        // Assuming current century, adjust if needed for dates before 2000
+        const fullYear = parseInt(`20${yearStr}`, 10);
+        date = new Date(fullYear, parseInt(monthNum, 10) - 1, 1); // Day 1 of the month
+      }
+    } else {
+      // Fallback for other potential date formats or if it's already a valid date string
+      try {
+        date = new Date(dateString);
+      } catch (e) {
+        console.warn("Invalid date string format:", dateString);
+        return "Fecha Inválida";
+      }
     }
+
+    if (!date || isNaN(date.getTime())) return "Fecha Inválida";
+    const options = { year: "numeric", month: "long", day: "numeric" };
+    return date.toLocaleDateString("es-CL", options);
   }, []);
 
-  // Función para abrir el modal y cargar fotos
-  const handleCardClick = useCallback(
-    async (project) => {
-      setSelectedProject(project);
-      setIsModalOpen(true);
-      setLoadingFotos(true); // Iniciar carga de fotos
-      setAcademicosFotos([]); // Limpiar fotos anteriores
-
-      // Obtener los IDs de los académicos de este proyecto
-      const academicosEnProyecto =
-        academicosMap[project.id_proyecto]?.profesores || [];
-      const academicosIds = academicosEnProyecto.map((p) => p.id_academico); // Extraer solo los IDs\
-
-      const FALLBACK_PHOTO_URL =
-        "https://t4.ftcdn.net/jpg/01/86/29/31/360_F_186293166_P4yk3uXQBDapbDFlR17ivpM6B1ux0fHG.jpg"; // Tu URL de placeholder
-
-      const photosToLoad = {};
-      const promisesToMake = [];
-      const idsToFetch = []; // IDs que realmente necesitamos solicitar a la API
-      // 1. Revisar caché para cada académico
-      academicosIds.forEach((id) => {
-        if (academicosFotosCache.current[id]) {
-          // Si ya está en caché, usar la versión cacheada
-          photosToLoad[id] = academicosFotosCache.current[id];
-        } else {
-          // Si no está en caché, añadir a la lista para solicitar
-          idsToFetch.push(id);
-          promisesToMake.push(academicosService.getFotosPorAcademico(id));
-        }
-      });
-
-      setAcademicosFotos(photosToLoad); // Mostrar las fotos cacheada inmediatamente
-      // Solo mostrar spinner si hay fotos nuevas por cargar
-      setLoadingFotos(idsToFetch.length > 0);
-      // 2. Si hay fotos que cargar de la API
-      if (idsToFetch.length > 0) {
-        try {
-          const fotosResponses = await Promise.all(promisesToMake);
-          fotosResponses.forEach((responseArray, index) => {
-            const academicoId = idsToFetch[index]; // El ID del académico para esta respuesta
-            const photoLink =
-              responseArray && responseArray.length > 0 && responseArray[0].link
-                ? responseArray[0].link
-                : null;
-            if (photoLink) {
-              photosToLoad[academicoId] = photoLink;
-              academicosFotosCache.current[academicoId] = photoLink; // Guardar en caché
-            } else {
-              photosToLoad[academicoId] = FALLBACK_PHOTO_URL;
-              academicosFotosCache.current[academicoId] = FALLBACK_PHOTO_URL; // Guardar placeholder en caché
-            }
-          });
-          setAcademicosFotos(photosToLoad); // Actualizar el estado con las nuevas fotos
-        } catch (err) {
-          console.error("Error fetching academic photos:", err);
-
-          setErrorGlobal({
-            type: "error", // Forzar a tipo error si falló
-            title: "Error al cargar las fotos de los académicos.",
-          });
-
-          // En caso de error, llenar con placeholders y guardar en caché el placeholder
-          idsToFetch.forEach((id) => {
-            photosToLoad[id] = FALLBACK_PHOTO_URL;
-            academicosFotosCache.current[id] = FALLBACK_PHOTO_URL;
-          });
-          setAcademicosFotos(photosToLoad);
-        } finally {
-          setLoadingFotos(false);
-        }
-      } else {
-        // No había fotos que cargar, simplemente quitamos el spinner si estaba
-        setLoadingFotos(false);
-      }
-
-      // Si no hay IDs de académicos en el proyecto, asegurar que el estado de fotos esté vacío y no muestre spinner
-      if (academicosIds.length === 0) {
-        setAcademicosFotos({});
-        setLoadingFotos(false);
-      }
-    },
-    [academicosMap, setErrorGlobal, academicosFotosCache] // Añadir academicosFotosCache a las dependencias
-  );
+  const handleCardClick = useCallback(async (project) => {
+    setSelectedProject(project);
+    setIsModalOpen(true);
+    setLoadingFotos(false); // Set to false immediately
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -189,54 +139,64 @@ export default function VisualizacionPage() {
     setErrorGlobal(null);
 
     try {
-      const [projectsResponse, academicosResponse] = await Promise.all([
-        funcionesService.getDataInterseccionProyectos(),
-        funcionesService.getAcademicosPorProyecto(),
-      ]);
+      // Use the getAllproyectos function from the service
+      const result = await cartera_proyecto.getAllproyectos();
 
-      const projects = Array.isArray(projectsResponse) ? projectsResponse : [];
-      const academicosPorProyecto = Array.isArray(academicosResponse)
-        ? academicosResponse
-        : [];
+      if (!result.ok || !Array.isArray(result.data)) {
+        throw new Error("Invalid API response format");
+      }
 
-      const newAcademicosMap = academicosPorProyecto.reduce((map, item) => {
-        map[item.id_proyecto] = item;
-        return map;
-      }, {});
-      setAcademicosMap(newAcademicosMap);
+      const projects = result.data.map((item) => {
+        // Split academic partners and their photos
+        const partnerAcademics = item["Académic@/s-Partner"]
+          ? item["Académic@/s-Partner"]
+              .split(",")
+              .map((name) => name.trim())
+              .filter(Boolean)
+          : [];
 
-      // *** NUEVA LÓGICA PARA ESTUDIANTES ***
-      const estudiantesPromises = projects.map(async (project) => {
-        try {
-          const estudiantes =
-            await estudiantesService.getEstudiantesPorProyecto(
-              project.id_proyecto
-            );
-          return { id_proyecto: project.id_proyecto, estudiantes };
-        } catch (e) {
-          console.error(
-            `Error al obtener estudiantes para proyecto ${project.id_proyecto}:`,
-            e
-          );
-          return { id_proyecto: project.id_proyecto, estudiantes: [] }; // Retorna array vacío en caso de error
-        }
+        const partnerPhotos = item.link_foto_partner
+          ? item.link_foto_partner
+              .split(",")
+              .map((link) => link.trim())
+              .filter(Boolean)
+          : [];
+
+        // Ensure partner names and photos are paired correctly, or use fallback
+        const pairedPartners = partnerAcademics.map((name, index) => ({
+          name: name,
+          photo: partnerPhotos[index] || null, // Use corresponding photo or null
+        }));
+
+        return {
+          id_proyecto: item._id, // Use _id as unique identifier
+          nombre: item["Nombre Proyecto/Perfil Proyecto"],
+          tematica: item.Temática,
+          estatus: item.Estatus,
+          apoyo: item["Tipo Apoyo"],
+          detalle_apoyo: item["Detalle Apoyo"],
+          monto: item["Monto Proyecto MM$"],
+          lider_academico: item["Académic@/s-Líder"],
+          partner_academicos: pairedPartners, // Array of { name, photo } objects
+          estudiantes: item.Estudiantes, // This is a string now
+          unidad: item["Unidad Académica"],
+          nombre_convo: item["Nombre Convocatoria a la que se postuló"],
+          tipo_convocatoria: item["Tipo Convocatoria"],
+          institucion: item["Institucion Convocatoria"],
+          fecha_postulacion: item["Fecha Postulación"],
+          link_foto_lider: item.link_foto_lider,
+        };
       });
-
-      const estudiantesResponses = await Promise.all(estudiantesPromises);
-
-      const newEstudiantesMap = estudiantesResponses.reduce((map, item) => {
-        map[item.id_proyecto] = item.estudiantes;
-        return map;
-      }, {});
-      setEstudiantesMap(newEstudiantesMap); // <--- GUARDAR EL MAPA DE ESTUDIANTES
-      // *** FIN NUEVA LÓGICA PARA ESTUDIANTES ***
 
       setProjectsData(projects);
     } catch (err) {
       console.error("Error fetching data for VisualizacionPage:", err);
-      setErrorLocal(
-        err.message || "Error desconocido al cargar los proyectos."
-      );
+      // Check if err is an AxiosError and extract a more specific message if available
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Error desconocido al cargar los proyectos.";
+      setErrorLocal(errorMessage);
       setErrorGlobal({
         type: "error",
         title: "Error al cargar los proyectos",
@@ -274,7 +234,7 @@ export default function VisualizacionPage() {
       project.nombre.toLowerCase().startsWith(searchTerm.toLowerCase());
     const matchesConvocatoria =
       selectedConvocatoria === "todos" ||
-      project.convocatoria === selectedConvocatoria;
+      project.nombre_convo === selectedConvocatoria;
     const matchesTematica =
       selectedTematica === "todos" || project.tematica === selectedTematica;
     const matchesInstitucion =
@@ -292,17 +252,44 @@ export default function VisualizacionPage() {
 
   // Lógica de ordenamiento
   const sortedProjects = [...filteredProjects].sort((a, b) => {
-    const hasDateA =
-      a.fecha_postulacion && !isNaN(new Date(a.fecha_postulacion));
-    const hasDateB =
-      b.fecha_postulacion && !isNaN(new Date(b.fecha_postulacion));
-    if (!hasDateA && !hasDateB) return 0;
-    if (!hasDateA) return orden === "reciente" ? 1 : -1;
-    if (!hasDateB) return orden === "reciente" ? -1 : 1;
-    const dateA = new Date(a.fecha_postulacion);
-    dateA.setUTCHours(0, 0, 0, 0);
-    const dateB = new Date(b.fecha_postulacion);
-    dateB.setUTCHours(0, 0, 0, 0);
+    // We need to parse the "sept-24" format here for sorting
+    const parseDateForSort = (dateString) => {
+      if (!dateString) return null;
+      const monthMapSort = {
+        ene: 0,
+        feb: 1,
+        mar: 2,
+        abr: 3,
+        may: 4,
+        jun: 5,
+        jul: 6,
+        ago: 7,
+        sept: 8,
+        oct: 9,
+        nov: 10,
+        dic: 11,
+      };
+      const parts = dateString.split("-");
+      if (parts.length === 2) {
+        const monthIndex = monthMapSort[parts[0].toLowerCase()];
+        const year = parseInt(`20${parts[1]}`, 10); // Assuming 21st century
+        if (monthIndex !== undefined && !isNaN(year)) {
+          return new Date(year, monthIndex, 1); // Use day 1 for consistent comparison
+        }
+      }
+      try {
+        return new Date(dateString); // Fallback for other date formats
+      } catch (e) {
+        return null;
+      }
+    };
+
+    const dateA = parseDateForSort(a.fecha_postulacion);
+    const dateB = parseDateForSort(b.fecha_postulacion);
+
+    if (!dateA && !dateB) return 0;
+    if (!dateA) return orden === "reciente" ? 1 : -1;
+    if (!dateB) return orden === "reciente" ? -1 : 1;
 
     if (orden === "reciente") {
       return dateB.getTime() - dateA.getTime();
@@ -336,11 +323,6 @@ export default function VisualizacionPage() {
     },
     [totalPages]
   );
-
-  // **** Obtener estudiantes para el modal ****
-  const estudiantesInModal = selectedProject
-    ? estudiantesMap[selectedProject.id_proyecto] || []
-    : [];
 
   return (
     <div className="h-full bg-gradient-to-br from-slate-50 to-blue-50">
@@ -403,6 +385,25 @@ export default function VisualizacionPage() {
                   {uniqueTematicas.map((tem) => (
                     <SelectItem key={tem} value={tem}>
                       {tem}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* New Select for Convocatoria Name */}
+            <div>
+              <Select
+                value={selectedConvocatoria}
+                onValueChange={setSelectedConvocatoria}
+              >
+                <SelectTrigger className="bg-gray-50 border-gray-200">
+                  <SelectValue placeholder="Todas las convocatorias" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[400px] overflow-y-auto">
+                  <SelectItem value="todos">Todas las convocatorias</SelectItem>
+                  {uniqueConvocatorias.map((convo) => (
+                    <SelectItem key={convo} value={convo}>
+                      {convo}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -494,8 +495,23 @@ export default function VisualizacionPage() {
               <ProjectCard
                 key={project.id_proyecto}
                 project={project}
-                academicosDelProyecto={academicosMap[project.id_proyecto]}
-                estudiantesDelProyecto={estudiantesMap[project.id_proyecto]} // <--- NUEVA PROP
+                // We'll adapt academicosDelProyecto and estudiantesDelProyecto in ProjectCard itself
+                // Or, if ProjectCard needs a specific format, we can prepare it here.
+                // For now, let's simplify and pass the direct data to ProjectCard.
+                // The current ProjectCard relies on these two props, so let's adjust them.
+                academicosDelProyecto={{
+                  profesores: [
+                    project.lider_academico,
+                    ...project.partner_academicos.map((p) => p.name),
+                  ]
+                    .filter(Boolean)
+                    .map((name) => ({ nombre_completo: name })),
+                }}
+                estudiantesDelProyecto={
+                  project.estudiantes
+                    ? [{ nombre: project.estudiantes, a_paterno: "" }]
+                    : []
+                }
                 onClick={() => handleCardClick(project)}
               />
             ))}
@@ -630,9 +646,9 @@ export default function VisualizacionPage() {
                   <p className="text-s text-gray-700">
                     <span className="font-semibold">Convocatoria:</span>{" "}
                     {selectedProject.nombre_convo || "Sin información"}{" "}
-                    {selectedProject.convocatoria &&
-                    selectedProject.convocatoria !== ""
-                      ? `(${selectedProject.convocatoria})`
+                    {selectedProject.tipo_convocatoria &&
+                    selectedProject.tipo_convocatoria !== ""
+                      ? `(${selectedProject.tipo_convocatoria})`
                       : ""}
                   </p>
                 </div>
@@ -647,61 +663,73 @@ export default function VisualizacionPage() {
                     <GraduationCap className="h-4 w-4 text-[#2E5C8A]" />
                     Académicos Involucrados
                   </h4>
-                  {loadingFotos ? (
+                  {loadingFotos ? ( // loadingFotos will be false almost instantly
                     <div className="flex justify-center items-center h-16">
                       <Spinner size={24} className="text-[#2E5C8A]" />
                     </div>
-                  ) : // Lógica de renderizado para académicos
-                  academicosMap[selectedProject.id_proyecto]?.profesores
-                      ?.length > 0 ? (
+                  ) : (
                     <div className="grid grid-cols-1 gap-y-2">
-                      {academicosMap[
-                        selectedProject.id_proyecto
-                      ]?.profesores?.map((academico) => (
-                        <div
-                          key={academico.id_academico}
-                          className="flex items-center gap-2"
-                        >
+                      {selectedProject.lider_academico && (
+                        <div className="flex items-center gap-2">
                           <img
-                            src={academicosFotos[academico.id_academico]}
+                            src={
+                              selectedProject.link_foto_lider ||
+                              "https://t4.ftcdn.net/jpg/01/86/29/31/360_F_186293166_P4yk3uXQBDapbDFlR17ivpM6B1ux0fHG.jpg"
+                            }
                             alt={`Foto de ${
-                              academico.nombre_completo || "académico"
+                              selectedProject.lider_academico || "académico"
                             }`}
                             className="w-16 h-16 object-cover rounded-full border border-gray-200 flex-shrink-0"
                           />
                           <p className="text-s font-medium text-gray-800 leading-tight">
-                            {academico.nombre_completo}
+                            {selectedProject.lider_academico} (Líder)
                           </p>
                         </div>
-                      ))}
+                      )}
+                      {selectedProject.partner_academicos &&
+                        selectedProject.partner_academicos.map(
+                          (partner, index) => (
+                            <div
+                              key={partner.name + index} // Unique key for partners
+                              className="flex items-center gap-2"
+                            >
+                              <img
+                                src={
+                                  partner.photo ||
+                                  "https://t4.ftcdn.net/jpg/01/86/29/31/360_F_186293166_P4yk3uXQBDapbDFlR17ivpM6B1ux0fHG.jpg"
+                                }
+                                alt={`Foto de ${partner.name || "académico"}`}
+                                className="w-16 h-16 object-cover rounded-full border border-gray-200 flex-shrink-0"
+                              />
+                              <p className="text-s font-medium text-gray-800 leading-tight">
+                                {partner.name} (Partner)
+                              </p>
+                            </div>
+                          )
+                        )}
+                      {!selectedProject.lider_academico &&
+                        (!selectedProject.partner_academicos ||
+                          selectedProject.partner_academicos.length === 0) && (
+                          <p className="text-s text-gray-500 text-center">
+                            Sin académicos involucrados.
+                          </p>
+                        )}
                     </div>
-                  ) : (
-                    // Texto cuando no hay académicos
-                    <p className="text-s text-gray-500 text-center">
-                      Sin académicos involucrados.
-                    </p>
                   )}
                 </div>
                 {/* Sección de Estudiantes Involucrados (NUEVA) */}
-                {estudiantesInModal &&
-                  estudiantesInModal.length > 0 && ( // Condición para renderizar la sección
-                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                      <h4 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                        <GraduationCap className="h-4 w-4 text-[#2E5C8A]" />{" "}
-                        {/* Icono de estudiante */}
-                        Estudiantes Involucrados
-                      </h4>
-                      <div className="grid grid-cols-1 gap-y-1">
-                        {estudiantesInModal.map((estudiante, index) => (
-                          <p key={index} className="text-s text-gray-800">
-                            {`${estudiante.nombre} ${
-                              estudiante.a_paterno || ""
-                            }`.trim()}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                {selectedProject.estudiantes && ( // Check if the string exists
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                      <GraduationCap className="h-4 w-4 text-[#2E5C8A]" />{" "}
+                      {/* Icono de estudiante */}
+                      Estudiantes Involucrados
+                    </h4>
+                    <p className="text-s text-gray-800">
+                      {selectedProject.estudiantes}
+                    </p>
+                  </div>
+                )}
               </div>{" "}
               {/* Fin de la Columna Derecha */}
             </div>

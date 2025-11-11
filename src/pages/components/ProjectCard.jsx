@@ -1,12 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
-  Users, // Para el líder del proyecto
-  Tag, // Para temáticas (puede ser genérico)
-  Calendar, // Para la fecha
-  Zap, // Rayo para "Almacenamiento Energía"
-  FlaskRound, // Para "Hidrógeno"
-  Lightbulb, // Para "Contaminación Lumínica"
+  Users,
+  Tag,
+  Calendar,
+  Zap,
+  FlaskRound,
+  Lightbulb,
   Pickaxe,
   Dna,
   BatteryCharging,
@@ -44,7 +44,7 @@ const INSTITUCION_LOGOS = {
   ANID: anidLogo,
   CORFO: corfoLogo,
   "GORE-Valparaíso": goreLogo,
-  "CORFO-Magallanes": corfoLogo,
+  "CORFO-Magallanes": corfoLogo, // Assuming CORFO-Magallanes uses the same CORFO logo
   SQM: sqmLogo,
   CODESSER: codesserLogo,
   PUCV: pucvLogo,
@@ -89,76 +89,76 @@ export const getThematicBadge = (tematica) => {
 
   switch (tematica) {
     case "Almacenamiento Energía":
-      icon = <Zap />;
+      icon = <Zap className={iconClass} />;
       break;
     case "Hidrógeno":
-      icon = <FlaskRound />;
+      icon = <FlaskRound className={iconClass} />;
       break;
     case "Contaminación Lumínica":
-      icon = <Lightbulb />;
+      icon = <Lightbulb className={iconClass} />;
       break;
     case "Educación":
-      icon = <GraduationCap />;
+      icon = <GraduationCap className={iconClass} />;
       break;
     case "Software":
-      icon = <Code />;
+      icon = <Code className={iconClass} />;
       break;
     case "Seguridad":
-      icon = <ShieldAlert />;
+      icon = <ShieldAlert className={iconClass} />;
       break;
     case "Sensores":
-      icon = <Radar />;
+      icon = <Radar className={iconClass} />;
       break;
     case "Minería":
-      icon = <Pickaxe />;
+      icon = <Pickaxe className={iconClass} />;
       break;
     case "Agua":
-      icon = <Droplet />;
+      icon = <Droplet className={iconClass} />;
       break;
     case "Energía":
-      icon = <Plug />;
+      icon = <Plug className={iconClass} />;
       break;
     case "LegalTech":
-      icon = <Scale />;
+      icon = <Scale className={iconClass} />;
       break;
     case "Salud":
-      icon = <HeartPulse />;
+      icon = <HeartPulse className={iconClass} />;
       break;
     case "Economía Circular":
-      icon = <Recycle />;
+      icon = <Recycle className={iconClass} />;
       break;
     case "Alimentos":
-      icon = <Utensils />;
+      icon = <Utensils className={iconClass} />;
       break;
     case "Interdisciplina":
-      icon = <Network />;
+      icon = <Network className={iconClass} />;
       break;
     case "Gemelos Digitales":
-      icon = <Layers />;
+      icon = <Layers className={iconClass} />;
       break;
     case "Realidad Virtual":
-      icon = <RectangleGoggles />;
+      icon = <RectangleGoggles className={iconClass} />;
       break;
     case "Armonización Curricular":
-      icon = <BookOpenCheck />;
+      icon = <BookOpenCheck className={iconClass} />;
       break;
     case "Astronomía":
-      icon = <Telescope />;
+      icon = <Telescope className={iconClass} />;
       break;
     case "STEM":
-      icon = <Atom />;
+      icon = <Atom className={iconClass} />;
       break;
     case "Telecomunicaciones":
-      icon = <RadioTower />;
+      icon = <RadioTower className={iconClass} />;
       break;
     case "Biotecnología":
-      icon = <Dna />;
+      icon = <Dna className={iconClass} />;
       break;
     case "Litio":
-      icon = <BatteryCharging />;
+      icon = <BatteryCharging className={iconClass} />;
       break;
     default:
-      icon = <Tag />;
+      icon = <Tag className={iconClass} />;
       break;
   }
   return (
@@ -181,9 +181,7 @@ export const renderInstitucionLogo = (nombreInstitucion) => {
   } else if (nombreInstitucion === "PRIVADA") {
     return (
       <div className="h-5 w-5 flex items-center justify-center bg-gray-200 rounded-full text-gray-700 text-[0.7rem] font-bold flex-shrink-0">
-        {nombreInstitucion === "PRIVADA"
-          ? "PRIV"
-          : nombreInstitucion.substring(0, 4).toUpperCase()}
+        PRIV
       </div>
     );
   }
@@ -192,20 +190,46 @@ export const renderInstitucionLogo = (nombreInstitucion) => {
 
 function ProjectCard({
   project,
-  academicosDelProyecto,
-  estudiantesDelProyecto,
+  academicosDelProyecto, // Still received but adapted from main component
+  estudiantesDelProyecto, // Still received but adapted from main component
   onClick,
 }) {
-  // Added onClick prop
-
   const formatDateShort = (dateString) => {
     if (!dateString) return "Sin fecha";
+    // Parse "sept-24" format
+    const monthMap = {
+      "ene-": "ene",
+      "feb-": "feb",
+      "mar-": "mar",
+      "abr-": "abr",
+      "may-": "may",
+      "jun-": "jun",
+      "jul-": "jul",
+      "ago-": "ago",
+      "sept-": "sept",
+      "oct-": "oct",
+      "nov-": "nov",
+      "dic-": "dic",
+    };
+
+    const parts = dateString.split("-");
+    if (parts.length === 2) {
+      const monthStr = parts[0].toLowerCase();
+      const yearStr = parts[1];
+      if (monthMap[`${monthStr}-`]) {
+        return `${
+          monthMap[`${monthStr}-`].charAt(0).toUpperCase() +
+          monthMap[`${monthStr}-`].slice(1).replace(".", "")
+        }-${yearStr}`;
+      }
+    }
+    // Fallback if not "MMM-YY" format
     try {
       const date = new Date(dateString);
-      if (isNaN(date)) return "Fecha Inválida";
+      if (isNaN(date.getTime())) return "Fecha Inválida";
       const options = { month: "short", year: "numeric" };
       let formatted = date.toLocaleDateString("es-CL", options);
-      formatted = formatted.replace(".", "");
+      formatted = formatted.replace(".", ""); // Remove period from short month
       return formatted;
     } catch (e) {
       console.warn(
@@ -217,24 +241,17 @@ function ProjectCard({
     }
   };
 
-  const academicosNames =
-    academicosDelProyecto && Array.isArray(academicosDelProyecto.profesores)
-      ? academicosDelProyecto.profesores
-          .map((p) => p.nombre_completo)
-          .join(", ")
-      : "Sin académicos involucrados";
+  // Academic names are now directly from project object or constructed from string props
+  const academicosNames = [project.lider_academico, project.partner_academico]
+    .filter(Boolean)
+    .join(", ");
 
-  const estudiantesNames =
-    estudiantesDelProyecto && Array.isArray(estudiantesDelProyecto)
-      ? estudiantesDelProyecto
-          .map((e) => `${e.nombre} ${e.a_paterno || ""}`.trim())
-          .join(", ")
-      : "";
+  const estudiantesNames = project.estudiantes || ""; // Students is a single string
 
   return (
     <Card
       className="relative flex flex-col bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden h-full cursor-pointer"
-      onClick={onClick} // Agregamos el onClick aquí
+      onClick={onClick}
     >
       <CardHeader className="bg-gradient-to-r from-[#2E5C8A] to-[#3A6FA7] p-4 flex-shrink-0">
         <div className="flex justify-between items-start">
@@ -258,12 +275,12 @@ function ProjectCard({
         <div className="flex items-center text-gray-700 text-sm mb-2">
           <Users className="h-4 w-4 mr-2 text-gray-500" />
           <div className="flex flex-col">
-            <p className="font-medium text-gray-900">{academicosNames}</p>{" "}
-            {/* Nombres de académicos */}
+            <p className="font-medium text-gray-900">
+              {academicosNames || "Sin académicos involucrados"}
+            </p>
             <p className="text-xs text-gray-500">
               {project.unidad || "Sin información"}
-            </p>{" "}
-            {/* Unidad responsable */}
+            </p>
           </div>
         </div>
 
@@ -272,7 +289,9 @@ function ProjectCard({
           <CircleDollarSign className="h-4 w-4 mr-2 text-gray-500" />
           <div className="flex flex-col">
             <p className="font-medium text-gray-900">
-              ${project.monto.toLocaleString("es-CL")}
+              {project.monto !== null && project.monto !== undefined
+                ? `$${project.monto.toLocaleString("es-CL")}`
+                : "Sin información"}
             </p>
             <p className="text-xs text-gray-500">
               Apoyo {project.apoyo || "Sin información"} (
@@ -281,7 +300,7 @@ function ProjectCard({
           </div>
         </div>
 
-        {estudiantesNames.length > 0 && ( // <--- CAMBIO CLAVE: Condición con .length
+        {estudiantesNames.length > 0 && (
           <div className="flex items-center text-gray-700 text-sm mb-2">
             <GraduationCap className="h-4 w-4 mr-2 text-gray-500" />
             <div className="flex flex-col">
@@ -292,7 +311,6 @@ function ProjectCard({
         )}
         {/* **** Nuevo contenedor Flexbox para la Fecha y el Badge al final **** */}
         <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
-          {" "}
           {/* mt-auto y pt-4 para empujar abajo y separar */}
           {/* Fecha de Postulación */}
           <div className="flex items-center text-gray-700 text-sm">
