@@ -12,7 +12,7 @@ import Footer from "./pages/layout/Footer";
 // Importa tus componentes de página nuevos y existentes
 import HomePage from "./pages/HomePage";
 import VisualizacionPage from "./pages/VisualizacionPage";
-import EstadisticasPage from "./pages/EstadisticasPage";
+import EstadisticasPage2 from "./pages/EstadisticasPage2";
 import FondosPage from "./pages/FondosPage";
 import FormulariosPage from "./pages/FormulariosPage";
 import AnadirProyectosPage from "./pages/AnadirProyectosPage";
@@ -105,7 +105,7 @@ function AppContent() {
           <Route path="/anadir-proyectos" element={<AnadirProyectosPage />} />
           <Route path="/editar-proyectos" element={<EditarProyectosPage />} />
 
-          <Route path="/estadisticas" element={<EstadisticasPage />} />
+          <Route path="/estadisticas" element={<EstadisticasPage2 />} />
           <Route path="/fondos" element={<FondosPage />} />
           <Route path="/formularios" element={<FormulariosPage />} />
 

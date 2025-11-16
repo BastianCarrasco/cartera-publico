@@ -1,4 +1,4 @@
-import axiosClient from "./axiosClient";
+import axiosClient from "../axiosClient";
 const PROJECTS_API_URL = import.meta.env.VITE_PROJECTS_API_URL;
 const PROJECTS_ANALISIS_API_URL = import.meta.env
   .VITE_PROJECTS_ANALISIS_API_URL;

@@ -5,6 +5,7 @@ import estudiantesService from "../api/estudiantes.js";
 import FondosActivosSection from "../pages/components/FondosActivosSection"; // Asegúrate de esta ruta
 import estadisticasService from "../api/estadisticas.js";
 import { useState, useEffect } from "react";
+import cartera_proyecto from "@/api/EXCEL_QUERIES/cartera_proyecto.js"; // Correct path to your service
 
 import { useProyectos } from "@/contexts/ProyectosContext";
 
@@ -41,6 +42,7 @@ export default function HomePage() {
   const { proyectosContexto, setProyectosContexto } = useProyectos();
 
   const navigate = useNavigate();
+  // Puedes mantener estas para otros usos, pero las stats rápidas se obtendrán de getAnalisisCompleto
   const [proyectosCrudosData, setProyectosCrudosData] = useState([]);
   const [proyectosProfesorData, setProyectosProfesorData] = useState([]);
   const [loadingQuickStats, setLoadingQuickStats] = useState(true);
@@ -51,15 +53,10 @@ export default function HomePage() {
   const { loadingExportPDF, loadingExportExcel, generarPDF, generarExcel } =
     useExportData();
 
-  const proyectosEnCartera = Array.isArray(proyectosCrudosData)
-    ? proyectosCrudosData.length
-    : 0;
-  const postuladosCount = Array.isArray(proyectosCrudosData)
-    ? proyectosCrudosData.filter((p) => p.estatus === "Postulado").length
-    : 0;
-  const perfiladosCount = Array.isArray(proyectosCrudosData)
-    ? proyectosCrudosData.filter((p) => p.estatus === "Perfil").length
-    : 0;
+  // Estados específicos para las estadísticas rápidas, ahora derivados de getAnalisisCompleto
+  const [totalProyectosCount, setTotalProyectosCount] = useState(0);
+  const [postuladosCount, setPostuladosCount] = useState(0);
+  const [perfiladosCount, setPerfiladosCount] = useState(0);
 
   const fetchData = async () => {
     setLoadingQuickStats(true);
@@ -69,16 +66,33 @@ export default function HomePage() {
         projectsResponse,
         academicosResponse,
         profProjectsResponse, // No se usa directamente en el contexto del proyecto
+        analisisCompletoResponse, // Nueva respuesta para getAnalisisCompleto
       ] = await Promise.all([
         funcionesService.getDataInterseccionProyectos(),
         funcionesService.getAcademicosPorProyecto(),
         estadisticasService.getAcademicosPorUnidad(), // Esto es para estadisticas, no para proyectosContexto
+        cartera_proyecto.getAnalisisCompleto(), // ¡CORRECCIÓN AQUÍ!
       ]);
 
       const projects = Array.isArray(projectsResponse) ? projectsResponse : [];
       const academicosPorProyecto = Array.isArray(academicosResponse)
         ? academicosResponse
         : [];
+
+      // *** Procesar datos de Analisis Completo para las Quick Stats ***
+      if (analisisCompletoResponse && analisisCompletoResponse.ok) {
+        setTotalProyectosCount(analisisCompletoResponse.totalProyectos);
+
+        const estatusData = analisisCompletoResponse.estatus.datos;
+        const postulados = estatusData.find(
+          (s) => s.nombre === "Postulado"
+        )?.cantidad;
+        const perfil = estatusData.find((s) => s.nombre === "Perfil")?.cantidad; // Asumiendo que 'Perfil' es el nombre para proyectos perfilados
+
+        setPostuladosCount(postulados || 0);
+        setPerfiladosCount(perfil || 0); // Establece el conteo de perfilados
+      }
+      // *** Fin Procesamiento Analisis Completo ***
 
       const newAcademicosMap = academicosPorProyecto.reduce((map, item) => {
         map[item.id_proyecto] = item;
@@ -197,7 +211,7 @@ export default function HomePage() {
                   </div>
                 ) : (
                   <p className="text-2xl font-bold text-gray-900">
-                    {proyectosEnCartera}
+                    {totalProyectosCount}
                   </p>
                 )}
               </div>

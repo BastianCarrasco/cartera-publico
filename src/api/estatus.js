@@ -38,7 +38,7 @@ const estatusService = {
   },
 
   // GET /estatus/search/{tipo}
-  // Buscar estatus por tipo 
+  // Buscar estatus por tipo
   buscarEstatusPorTipo: async (tipo) => {
     const response = await axiosClient.get(`/estatus/search/${tipo}`);
     return response.data;

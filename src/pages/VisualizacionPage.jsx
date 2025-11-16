@@ -53,7 +53,7 @@ import ProjectCard, {
 } from "./components/ProjectCard.jsx";
 
 // Import the new API service
-import cartera_proyecto from "@/api/cartera_proyecto.js"; // Correct path to your service
+import cartera_proyecto from "@/api/EXCEL_QUERIES/cartera_proyecto.js"; // Correct path to your service
 
 // The API URL is now managed within cartera_proyecto.js, so we don't need it here.
 // const PROJECTS_API_URL = import.meta.env.VITE_PROJECTS_API_URL; // Remove this line
