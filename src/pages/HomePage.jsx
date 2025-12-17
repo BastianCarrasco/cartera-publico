@@ -1,176 +1,175 @@
 // src/pages/HomePage.jsx
 import { Button } from "@/components/ui/button";
-import funcionesService from "../api/funciones.js";
-import estudiantesService from "../api/estudiantes.js";
-import FondosActivosSection from "../pages/components/FondosActivosSection"; // Asegúrate de esta ruta
-import estadisticasService from "../api/estadisticas.js";
+// Los servicios de API han sido eliminados según tu solicitud
+// import funcionesService from "../api/funciones.js";
+// import estudiantesService from "../api/estudiantes.js";
+import FondosActivosSection from "../pages/components/FondosActivosSection";
+// import estadisticasService from "../api/estadisticas.js";
+// import analisisService from "../api/analisisService.js";
 import { useState, useEffect } from "react";
-import cartera_proyecto from "@/api/EXCEL_QUERIES/cartera_proyecto.js"; // Correct path to your service
-
-import { useProyectos } from "@/contexts/ProyectosContext";
-
-// **** Importa tu componente Spinner específico para esta página ****
+// useProyectos no se usa directamente para setProyectosContexto si se elimina la lógica de fetching detallado.
+// Considera si este context aún es necesario en HomePage sin la lógica de proyectos detallados.
+// import { useProyectos } from "@/contexts/ProyectosContext";
 import { Spinner } from "@/components/ui/spinner";
 
 import {
-  BarChart3,
-  FolderPlus,
-  PenTool,
-  Plus,
   ArrowRight,
   ContactRound,
-  CircleDollarSign,
   FolderOpen,
   FolderCheck,
   FileDown,
   Copy,
+  TrendingUp,
+  FileText,
+  Sheet,
+  Zap,
 } from "lucide-react";
 
-import { useNavigate } from "react-router-dom";
-
+import { useNavigate } from "react-router-dom"; // Se mantiene por si se usa en el futuro para navegación.
 import { useError } from "@/contexts/ErrorContext";
 import { useExportData } from "@/hooks/useExportDataCartera";
-
-// Importa los iconos de los archivos si los vas a seguir usando así
-import pdfIcon from "../assets/icons/file-pdf-regular.svg";
-import excelIcon from "../assets/icons/excel2-svgrepo-com.svg";
 
 const FORMULARIO_PERFIL_URL =
   "https://formularioproyectos-production.up.railway.app/";
 
+// La URL del análisis se declara pero no se usa para fetch directo en este componente.
+// Se asume que los datos de análisis se obtendrán de otra manera (ej. prop, contexto).
+const ANALISIS_URL = import.meta.env.VITE_URL_ANALISIS;
+
 export default function HomePage() {
-  const { proyectosContexto, setProyectosContexto } = useProyectos();
-
+  // setProyectosContexto ya no es necesario si no se fetch data detallada aquí.
+  // const { setProyectosContexto } = useProyectos();
   const navigate = useNavigate();
-  // Puedes mantener estas para otros usos, pero las stats rápidas se obtendrán de getAnalisisCompleto
-  const [proyectosCrudosData, setProyectosCrudosData] = useState([]);
-  const [proyectosProfesorData, setProyectosProfesorData] = useState([]);
-  const [loadingQuickStats, setLoadingQuickStats] = useState(true);
+  const [loadingQuickStats, setLoadingQuickStats] = useState(false); // Cambiado a false ya que no hay fetching aquí.
   const { setError } = useError();
-
   const [copiedMessage, setCopiedMessage] = useState(false);
+
+  // ESTADO CLAVE: Aquí es donde esperarías que llegara el 'analisisData'.
+  // Para que esto funcione, DEBES asegurarte de que 'analisisData' sea poblado
+  // desde otro lugar, por ejemplo, un contexto, un prop o un fetch externo.
+  // Para propósitos de esta demostración, lo inicializaré con la estructura
+  // JSON que proporcionaste para que la UI no rompa, pero recuerda que esto sería data estática.
+  const [analisisData, setAnalisisData] = useState({
+    ok: true,
+    message:
+      "Análisis completo de proyectos en EXCEL-BUN: Conteo total, temáticas, estatus, tipo de apoyo, unidades académicas, tipos/instituciones de convocatoria y total de académicos únicos.",
+    totalProyectos: 44,
+    tematicas: {
+      totalTematicasDistintas: 23,
+      datos: [
+        { nombre: "Hidrógeno", cantidad: 5 },
+        { nombre: "Economía Circular", cantidad: 5 },
+        { nombre: "Interdisciplina", cantidad: 3 },
+        { nombre: "Minería", cantidad: 3 },
+        { nombre: "Alimentos", cantidad: 3 },
+        { nombre: "Litio", cantidad: 2 },
+        { nombre: "Realidad Virtual", cantidad: 2 },
+        { nombre: "Salud", cantidad: 2 },
+        { nombre: "Gemelos Digitales", cantidad: 2 },
+        { nombre: "Biotecnología", cantidad: 2 },
+        { nombre: "Seguridad", cantidad: 2 },
+        { nombre: "Sin Temática", cantidad: 2 },
+        { nombre: "Educación de Ingeniería", cantidad: 1 },
+        { nombre: "Almacenamiento Energía", cantidad: 1 },
+        { nombre: "Recursos hídricos", cantidad: 1 },
+        { nombre: "Astronomia", cantidad: 1 },
+        { nombre: "Género", cantidad: 1 },
+        { nombre: "Telecomunicaciones", cantidad: 1 },
+        { nombre: "Contaminación Lumínica", cantidad: 1 },
+        { nombre: "LegalTech", cantidad: 1 },
+        { nombre: "Medioambiente", cantidad: 1 },
+        { nombre: "Educación", cantidad: 1 },
+        { nombre: "Recursos Hídricos", cantidad: 1 },
+      ],
+    },
+    estatus: {
+      totalEstatusDistintos: 4,
+      datos: [
+        { nombre: "Perfil", cantidad: 21 },
+        { nombre: "Postulado", cantidad: 18 },
+        { nombre: "Adjudicado", cantidad: 3 },
+        { nombre: "No postulado", cantidad: 2 },
+      ],
+    },
+    tipoApoyo: {
+      totalTiposApoyoDistintos: 2,
+      datos: [
+        { nombre: "Parcial", cantidad: 33 },
+        { nombre: "Total", cantidad: 11 },
+      ],
+    },
+    unidadesAcademicas: {
+      totalUnidadesDistintas: 9,
+      datos: [
+        { nombre: "Facultad de Ingeniería", cantidad: 9 },
+        { nombre: "Escuela de Ingeniería Química", cantidad: 7 },
+        { nombre: "Escuela de Ingeniería Civil", cantidad: 7 },
+        { nombre: "Escuela de Ingeniería Eléctrica", cantidad: 6 },
+        { nombre: "Escuela de Ingeniería Informática", cantidad: 6 },
+        { nombre: "Escuela de Ingeniería Bioquímica", cantidad: 5 },
+        { nombre: "Escuela de Ingeniería Mecánica", cantidad: 3 },
+        { nombre: "Escuela de Ingeniería Industrial", cantidad: 2 },
+        { nombre: "Escuela de Ingeniería Comercial", cantidad: 1 },
+      ],
+    },
+    tipoConvocatoria: {
+      totalTiposConvocatoriaDistintos: 6,
+      datos: [
+        { nombre: "NINGUNA", cantidad: 15 },
+        { nombre: "ANID", cantidad: 13 },
+        { nombre: "CORFO", cantidad: 6 },
+        { nombre: "PRIVADA", cantidad: 5 },
+        { nombre: "GORE", cantidad: 4 },
+        { nombre: "INTERNA", cantidad: 1 },
+      ],
+    },
+    institucionConvocatoria: {
+      totalInstitucionesConvocatoriaDistintas: 10,
+      datos: [
+        { nombre: "Sin institucion de convocatoria", cantidad: 15 },
+        { nombre: "ANID", cantidad: 8 },
+        { nombre: "PUCV", cantidad: 6 },
+        { nombre: "CORFO", cantidad: 5 },
+        { nombre: "GORE-Valparaíso", cantidad: 4 },
+        { nombre: "SQM", cantidad: 2 },
+        { nombre: "CODESSER", cantidad: 1 },
+        { nombre: "LACNIC", cantidad: 1 },
+        { nombre: "CORFO - Magallanes", cantidad: 1 },
+        { nombre: "ARMADA DE CHILE", cantidad: 1 },
+      ],
+    },
+    academicos: {
+      totalAcademicosUnicos: 24,
+    },
+  });
 
   const { loadingExportPDF, loadingExportExcel, generarPDF, generarExcel } =
     useExportData();
 
-  // Estados específicos para las estadísticas rápidas, ahora derivados de getAnalisisCompleto
-  const [totalProyectosCount, setTotalProyectosCount] = useState(0);
-  const [postuladosCount, setPostuladosCount] = useState(0);
-  const [perfiladosCount, setPerfiladosCount] = useState(0);
+  const proyectosEnCartera = analisisData?.totalProyectos || 0;
+  const postuladosCount =
+    analisisData?.estatus?.datos?.find((e) => e.nombre === "Postulado")
+      ?.cantidad || 0;
+  const perfiladosCount =
+    analisisData?.estatus?.datos?.find((e) => e.nombre === "Perfil")
+      ?.cantidad || 0;
 
-  const fetchData = async () => {
-    setLoadingQuickStats(true);
-    setError(null);
-    try {
-      const [
-        projectsResponse,
-        academicosResponse,
-        profProjectsResponse, // No se usa directamente en el contexto del proyecto
-        analisisCompletoResponse, // Nueva respuesta para getAnalisisCompleto
-      ] = await Promise.all([
-        funcionesService.getDataInterseccionProyectos(),
-        funcionesService.getAcademicosPorProyecto(),
-        estadisticasService.getAcademicosPorUnidad(), // Esto es para estadisticas, no para proyectosContexto
-        cartera_proyecto.getAnalisisCompleto(), // ¡CORRECCIÓN AQUÍ!
-      ]);
-
-      const projects = Array.isArray(projectsResponse) ? projectsResponse : [];
-      const academicosPorProyecto = Array.isArray(academicosResponse)
-        ? academicosResponse
-        : [];
-
-      // *** Procesar datos de Analisis Completo para las Quick Stats ***
-      if (analisisCompletoResponse && analisisCompletoResponse.ok) {
-        setTotalProyectosCount(analisisCompletoResponse.totalProyectos);
-
-        const estatusData = analisisCompletoResponse.estatus.datos;
-        const postulados = estatusData.find(
-          (s) => s.nombre === "Postulado"
-        )?.cantidad;
-        const perfil = estatusData.find((s) => s.nombre === "Perfil")?.cantidad; // Asumiendo que 'Perfil' es el nombre para proyectos perfilados
-
-        setPostuladosCount(postulados || 0);
-        setPerfiladosCount(perfil || 0); // Establece el conteo de perfilados
-      }
-      // *** Fin Procesamiento Analisis Completo ***
-
-      const newAcademicosMap = academicosPorProyecto.reduce((map, item) => {
-        map[item.id_proyecto] = item;
-        return map;
-      }, {});
-
-      // *** Parte nueva para estudiantes ***
-      // Recolectar todas las promesas para obtener estudiantes por proyecto
-      const estudiantesPromises = projects.map(async (project) => {
-        try {
-          const estudiantes =
-            await estudiantesService.getEstudiantesPorProyecto(
-              project.id_proyecto
-            );
-          return { id_proyecto: project.id_proyecto, estudiantes };
-        } catch (e) {
-          console.error(
-            `Error al obtener estudiantes para proyecto ${project.id_proyecto}:`,
-            e
-          );
-          return { id_proyecto: project.id_proyecto, estudiantes: [] }; // Retorna array vacío en caso de error
-        }
-      });
-
-      // Esperar a que todas las promesas de estudiantes se resuelvan
-      const estudiantesResponses = await Promise.all(estudiantesPromises);
-
-      // Crear un mapa de estudiantes por proyecto
-      const newEstudiantesMap = estudiantesResponses.reduce((map, item) => {
-        map[item.id_proyecto] = item.estudiantes;
-        return map;
-      }, {});
-      // *** Fin parte nueva para estudiantes ***
-
-      // Combinar proyectos con académicos y ahora también con estudiantes
-      const projectsWithAcademicosAndEstudiantes = projects.map((project) => ({
-        ...project,
-        academicos: newAcademicosMap[project.id_proyecto]?.profesores || [],
-        estudiantes: newEstudiantesMap[project.id_proyecto] || [], // Añadir estudiantes
-      }));
-
-      setProyectosContexto(projectsWithAcademicosAndEstudiantes);
-
-      // Los `proyectosCrudosData` y `proyectosProfesorData` todavía se setean
-      // para los Quick Stats y otros usos directos en HomePage.
-      setProyectosCrudosData(projects);
-      setProyectosProfesorData(
-        Array.isArray(profProjectsResponse) ? profProjectsResponse : []
-      );
-    } catch (e) {
-      console.error("Error fetching data for dashboard summary:", e);
-      setError(e.message || "Error desconocido al cargar los datos.");
-    } finally {
-      setLoadingQuickStats(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    console.log("proyectosContexto actualizado:", proyectosContexto);
-  }, [proyectosContexto]);
+  // fetchData ya no es necesaria aquí si no se hace fetching.
+  // useEffect ya no es necesario si no se hace fetching.
 
   const handleCopyLinkFormulario = async () => {
     try {
       await navigator.clipboard.writeText(FORMULARIO_PERFIL_URL);
-      setCopiedMessage(true); // Activa el mensaje de copiado
+      setCopiedMessage(true);
       setError({
         type: "success",
         title: "Enlace copiado!",
         description: "El enlace al formulario ha sido copiado al portapapeles.",
       });
       setTimeout(() => {
-        setCopiedMessage(false); // Oculta el mensaje después de un tiempo
-        setError(null); // Limpia el error global si lo usaste solo para esto
-      }, 3000); // Mensaje visible por 3 segundos
+        setCopiedMessage(false);
+        setError(null);
+      }, 3000);
     } catch (err) {
       console.error("Error al copiar el enlace:", err);
       setError({
@@ -182,202 +181,196 @@ export default function HomePage() {
   };
 
   return (
-    <div className="h-full bg-gradient-to-br from-slate-50 to-blue-50">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section y Botones de Exportar */}
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Centro de Control de Proyectos
-            </h1>
-            <p className="text-gray-600">
-              Gestiona y monitorea todos tus proyectos desde un solo lugar
-            </p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-200 via-sky-300 to-blue-200">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Hero Section - Con efecto glass */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2E5C8A] via-[#3B76B3] to-[#4A90D9] p-8 shadow-2xl">
+          <div
+            className="absolute inset-0 opacity-40"
+            style={{
+              backgroundImage: `
+        linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)
+      `,
+              backgroundSize: "30px 30px",
+            }}
+          ></div>
 
-        {/* Quick Stats - Los divs que contendrán los spinners */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Tarjeta de Total Proyectos */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Total de Proyectos
+          <div className="relative z-10">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div className="space-y-3">
+                <h1 className="text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
+                  Gestión de Proyectos
+                </h1>
+                <p className="text-blue-100 text-lg max-w-2xl">
+                  Monitorea y administra tu cartera completa desde un solo lugar
                 </p>
-                {loadingQuickStats ? (
-                  <div className="flex justify-center items-center h-8">
-                    <Spinner size={24} className="text-[#2E5C8A]" />
-                  </div>
-                ) : (
-                  <p className="text-2xl font-bold text-gray-900">
-                    {totalProyectosCount}
-                  </p>
-                )}
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <FolderOpen className="w-6 h-6 text-[#2E5C8A]" />
+
+              {/* Botones de exportar con glassmorphism */}
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  className="bg-white/10 backdrop-blur-md text-white hover:bg-white/20 hover:scale-105 transition-all duration-200 shadow-lg border border-white/30"
+                  onClick={generarPDF}
+                  disabled={loadingExportPDF}
+                >
+                  {loadingExportPDF ? (
+                    <Spinner size={16} className="text-white mr-2" />
+                  ) : (
+                    <div className="bg-white/20 backdrop-blur-sm rounded-full p-1.5 mr-2">
+                      <FileText />
+                    </div>
+                  )}
+                  Exportar PDF
+                </Button>
+
+                <Button
+                  className="bg-white/10 backdrop-blur-md text-white hover:bg-white/20 hover:scale-105 transition-all duration-200 shadow-lg border border-white/30"
+                  onClick={generarExcel}
+                  disabled={loadingExportExcel}
+                >
+                  {loadingExportExcel ? (
+                    <Spinner size={16} className="text-white mr-2" />
+                  ) : (
+                    <div className="bg-white/20 backdrop-blur-sm rounded-full p-1.5 mr-2">
+                      <Sheet />
+                    </div>
+                  )}
+                  Exportar Excel
+                </Button>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Tarjeta de Postulados */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
+        {/* Bento Grid Layout - Con glassmorphism */}
+        <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-6 auto-rows-fr">
+          {/* Stat Card Grande - Total Proyectos con efecto glass */}
+          <div className="md:col-span-3 lg:col-span-5 bg-white/40 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/50 hover:bg-white/50 hover:shadow-2xl transition-all duration-300 group">
+            <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Proyectos Postulados
+                <p className="text-sm font-medium text-[#2E5C8A]/80 mb-1">
+                  Total Proyectos
                 </p>
                 {loadingQuickStats ? (
-                  <div className="flex justify-center items-center h-8">
-                    <Spinner size={24} className="text-green-600" />
+                  <div className="flex items-center h-12">
+                    <Spinner size={32} className="text-[#2E5C8A]" />
                   </div>
                 ) : (
-                  <p className="text-2xl font-bold text-gray-900">
+                  <>
+                    <p className="text-5xl font-bold text-[#2E5C8A] mb-2">
+                      {proyectosEnCartera}
+                    </p>
+                    <div className="flex items-center gap-1 text-blue-700 text-sm font-medium">
+                      <TrendingUp className="w-4 h-4" />
+                      <span>En cartera activa</span>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="w-14 h-14 bg-gradient-to-br from-[#2E5C8A] to-[#3B76B3] rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 backdrop-blur-sm">
+                <FolderOpen className="w-7 h-7 text-white" />
+              </div>
+            </div>
+            <div className="h-1 bg-gradient-to-r from-[#2E5C8A] to-[#4A90D9] rounded-full opacity-70"></div>
+          </div>
+
+          {/* Stat Card - Postulados con glass */}
+          <div className="md:col-span-3 lg:col-span-4 bg-white/40 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/50 hover:bg-white/50 hover:shadow-2xl transition-all duration-300 group">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-sm font-medium text-[#2E5C8A]/80 mb-1">
+                  Postulados
+                </p>
+                {loadingQuickStats ? (
+                  <div className="flex items-center h-10">
+                    <Spinner size={24} className="text-[#3B76B3]" />
+                  </div>
+                ) : (
+                  <p className="text-4xl font-bold text-[#2E5C8A]">
                     {postuladosCount}
                   </p>
                 )}
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <FolderCheck className="w-6 h-6 text-green-600" />
+              <div className="w-12 h-12 bg-gradient-to-br from-[#3B76B3] to-[#5BA3E0] rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                <FolderCheck className="w-6 h-6 text-white" />
               </div>
             </div>
+            <div className="h-1 bg-gradient-to-r from-[#3B76B3] to-[#5BA3E0] rounded-full opacity-70"></div>
           </div>
 
-          {/* Tarjeta de Perfilados */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
+          {/* Stat Card - Perfilados con glass */}
+          <div className="md:col-span-3 lg:col-span-3 bg-white/40 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/50 hover:bg-white/50 hover:shadow-2xl transition-all duration-300 group">
+            <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-sm font-medium text-gray-600 ">
-                  Proyectos Perfilados
+                <p className="text-sm font-medium text-[#2E5C8A]/80 mb-1">
+                  Perfilados
                 </p>
                 {loadingQuickStats ? (
-                  <div className="flex justify-center items-center h-8">
-                    <Spinner size={24} className="text-purple-600" />
+                  <div className="flex items-center h-10">
+                    <Spinner size={24} className="text-[#5BA3E0]" />
                   </div>
                 ) : (
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-4xl font-bold text-[#2E5C8A]">
                     {perfiladosCount}
                   </p>
                 )}
               </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <ContactRound className="w-6 h-6 text-purple-600" />
+              <div className="w-12 h-12 bg-gradient-to-br from-[#4A90D9] to-[#6BB6F5] rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                <ContactRound className="w-6 h-6 text-white" />
               </div>
             </div>
+            <div className="h-1 bg-gradient-to-r from-[#4A90D9] to-[#6BB6F5] rounded-full opacity-70"></div>
           </div>
-        </div>
 
-        {/* Main Action Areas (Se mantienen igual) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-          {/* Left Column - Primary Actions */}
-          <div className="lg:col-span-2 space-y-6 h-full">
-            {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 ">
-              <h2 className="text-lg font-semibold text-gray-900 mb-6">
-                ¿Qué quieres hacer hoy?
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button
-                  className="h-20 bg-gradient-to-r from-[#2463a2] to-[#669dd8] text-white justify-start p-6 group transition-transform hover:scale-[1.02] cursor-pointer"
-                  size="lg"
-                  onClick={() => navigate("/visualizacion")}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-lg flex items-center justify-center transition-colors">
-                      <FolderPlus className="w-6 h-6" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-semibold">Ver Proyectos</div>
-                      <div className="text-sm opacity-90">
-                        Gestiona tu cartera
-                      </div>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 ml-auto group-hover:translate-x-1 transition-transform" />
-                </Button>
-
-                <Button
-                  className="h-20 bg-gradient-to-r from-[#2463a2] to-[#669dd8] text-white justify-start p-6 group transition-transform hover:scale-[1.02] cursor-pointer"
-                  size="lg"
-                  onClick={() => navigate("/fondos")}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-lg flex items-center justify-center transition-colors">
-                      <CircleDollarSign className="w-6 h-6" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-semibold">Ver Fondos</div>
-                      <div className="text-sm opacity-90">
-                        Revisa los instrumentos
-                      </div>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 ml-auto group-hover:translate-x-1 transition-transform" />
-                </Button>
-
-                <Button
-                  className="h-20 bg-gradient-to-r from-[#2463a2] to-[#669dd8] text-white justify-start p-6 group transition-transform hover:scale-[1.02] cursor-pointer"
-                  size="lg"
-                  onClick={() => navigate("/estadisticas")}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-lg flex items-center justify-center transition-colors">
-                      <BarChart3 className="w-6 h-6" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-semibold">Ver Estadísticas</div>
-                      <div className="text-sm opacity-90">Analiza métricas</div>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 ml-auto group-hover:translate-x-1 transition-transform" />
-                </Button>
+          {/* Formulario Card - Con glassmorphism prominente */}
+          <div className="md:col-span-6 lg:col-span-8 bg-white/30 backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/60 hover:bg-white/40 hover:shadow-2xl transition-all duration-300">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-[#2E5C8A]/90 backdrop-blur-sm rounded-lg flex items-center justify-center shadow-md">
+                <Zap className="w-5 h-5 text-white" />
               </div>
+              <h2 className="text-xl font-bold text-[#2E5C8A]">
+                Acciones Rápidas
+              </h2>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 ">
-              <h2 className="text-lg font-semibold text-gray-900 mb-6">
-                ¿Quieres ir a otro lado?
-              </h2>
-              {/* NUEVO BOTÓN PARA EL FORMULARIO DE PERFIL DE PROYECTO */}
-              <div className="relative">
-                <Button
-                  variant="outline"
-                  className="h-20 bg-gradient-to-r text-gray-800 justify-start p-6 group transition-transform hover:scale-[1.02] cursor-pointer w-full"
-                  size="lg"
-                  onClick={() => window.open(FORMULARIO_PERFIL_URL, "_blank")} // Abre en nueva pestaña
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-lg flex items-center justify-center transition-colors">
-                      <FileDown className="w-12 h-12" />{" "}
+            <div className="relative group/button">
+              <Button
+                className="w-full h-auto bg-white/50 backdrop-blur-md hover:bg-white/70 text-gray-900 justify-start p-6 transition-all duration-300 border-2 border-white/60 hover:border-[#3B76B3]/50 shadow-lg hover:shadow-xl"
+                onClick={() => window.open(FORMULARIO_PERFIL_URL, "_blank")}
+              >
+                <div className="flex items-center gap-4 w-full">
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#2E5C8A] to-[#4A90D9] flex items-center justify-center flex-shrink-0 group-hover/button:scale-110 transition-transform duration-300 shadow-lg">
+                    <FileDown className="w-7 h-7 text-white" />
+                  </div>
+                  <div className="text-left flex-1">
+                    <div className="font-bold text-lg mb-1 text-[#2E5C8A]">
+                      Formulario Perfil de Proyecto
                     </div>
-                    <div className="text-left">
-                      <div className="font-semibold text-lg">
-                        Formulario Perfil de Proyecto
-                      </div>
-                      <div className="text-s">Completa un nuevo perfil</div>
+                    <div className="text-sm text-gray-700">
+                      Completa un nuevo perfil de proyecto en el formulario
+                      externo
                     </div>
                   </div>
-                </Button>
-                <Button
-                  variant="secondary" // Puedes usar "ghost" o "link" si prefieres algo menos intrusivo
-                  className="absolute inset-y-0 right-0 h-full w-[60px] flex items-center justify-center rounded-l-none rounded-r-xl bg-gray-400 hover:bg-gray-500 text-white transition-colors p-0"
-                  onClick={handleCopyLinkFormulario}
-                  title="Copiar enlace del formulario"
-                >
-                  <div className="flex cursor-pointer flex-col items-center">
-                    <Copy className="h-5 w-5" />
-                    <span>Copiar</span>
-                  </div>
-                </Button>
-              </div>
+                  <ArrowRight className="w-6 h-6 text-[#3B76B3] group-hover/button:translate-x-1 transition-transform duration-300" />
+                </div>
+              </Button>
+
+              <Button
+                className="absolute right-0 top-0 h-full w-16 rounded-l-none rounded-r-xl bg-[#2E5C8A]/90 backdrop-blur-sm hover:bg-[#3B76B3] text-white border-2 border-[#2E5C8A]/90 hover:border-[#3B76B3] shadow-lg hover:shadow-xl transition-all duration-300"
+                onClick={handleCopyLinkFormulario}
+                title="Copiar enlace"
+              >
+                <div className="flex flex-col items-center gap-1">
+                  <Copy className="h-5 w-5" />
+                  <span className="text-xs font-medium">Copiar</span>
+                </div>
+              </Button>
             </div>
           </div>
 
-          {/* Right Column - Secondary Info */}
-          <div className="space-y-6">
-            {/* Fondos Activos */}
+          {/* Fondos Activos con glass */}
+          <div className="md:col-span-6 lg:col-span-4 bg-white/40 backdrop-blur-lg rounded-2xl shadow-xl border border-white/50 overflow-hidden hover:bg-white/50 transition-all duration-300">
             <FondosActivosSection />
           </div>
         </div>

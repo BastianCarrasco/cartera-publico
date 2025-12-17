@@ -78,13 +78,49 @@ export default function Navbar() {
               Visualización
             </Button>
 
+            {/* Dropdown para "Cartera de proyectos" */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={`text-white cursor-pointer hover:bg-white/10 hover:text-white ${
+                    isActive(["/anadir-proyectos", "/editar-proyectos"])
+                      ? "bg-white/10"
+                      : ""
+                  }`}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Cartera de proyectos
+                  <ChevronDown className="w-4 h-4 ml-1 -mr-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 bg-white shadow-lg rounded-md mt-2">
+                <DropdownMenuItem
+                  className="cursor-pointer hover:bg-gray-100 p-2 rounded-md"
+                  onClick={() => handleNavItemClick("/anadir-proyectos")}
+                >
+                  <Plus className="w-4 h-4 mr-2 text-gray-700" />
+                  Añadir Nuevo Proyecto
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer hover:bg-gray-100 p-2 rounded-md"
+                  onClick={() => handleNavItemClick("/editar-proyectos")}
+                >
+                  <Edit className="w-4 h-4 mr-2 text-gray-700" />
+                  Modificar Cartera de Proyectos
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {/* Dropdown para "Perfiles de proyecto" */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   className={`text-white cursor-pointer hover:bg-white/10 hover:text-white ${
-                    isActive(["/estadisticas", "/fondos"]) ? "bg-white/10" : ""
+                    isActive(["/estadisticas", "/fondos", "/formularios"])
+                      ? "bg-white/10"
+                      : ""
                   }`}
                 >
                   <User className="w-4 h-4 mr-2" />
@@ -106,6 +142,13 @@ export default function Navbar() {
                 >
                   <DollarSign className="w-4 h-4 mr-2 text-gray-700" />
                   Fondos
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer hover:bg-gray-100 p-2 rounded-md"
+                  onClick={() => handleNavItemClick("/formularios")}
+                >
+                  <ClipboardList className="w-4 h-4 mr-2 text-gray-700" />
+                  Formularios
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -153,6 +196,31 @@ export default function Navbar() {
                     Visualización
                   </Button>
 
+                  {/* Elementos del Dropdown "Cartera de proyectos" como botones directos en móvil */}
+                  <h4 className="px-4 py-2 text-sm font-semibold text-gray-500">
+                    Cartera de proyectos
+                  </h4>
+                  <Button
+                    variant="ghost"
+                    className={`text-gray-700 justify-start pl-8 ${isActive("/anadir-proyectos") ? "bg-gray-100" : ""}`}
+                    onClick={() => {
+                      handleNavItemClick("/anadir-proyectos");
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Añadir Nuevo Proyecto
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className={`text-gray-700 justify-start pl-8 ${isActive("/editar-proyectos") ? "bg-gray-100" : ""}`}
+                    onClick={() => {
+                      handleNavItemClick("/editar-proyectos");
+                    }}
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Modificar Cartera de Proyectos
+                  </Button>
+
                   {/* Elementos del Dropdown "Perfiles de proyecto" como botones directos en móvil */}
                   <h4 className="px-4 py-2 text-sm font-semibold text-gray-500">
                     Perfiles de proyecto
@@ -176,6 +244,16 @@ export default function Navbar() {
                   >
                     <DollarSign className="w-4 h-4 mr-2" />
                     Fondos
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className={`text-gray-700 justify-start pl-8 ${isActive("/formularios") ? "bg-gray-100" : ""}`}
+                    onClick={() => {
+                      handleNavItemClick("/formularios");
+                    }}
+                  >
+                    <ClipboardList className="w-4 h-4 mr-2" />
+                    Formularios
                   </Button>
                 </nav>
               </SheetContent>

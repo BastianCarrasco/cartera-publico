@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge"; // Shadcn Badge
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -30,9 +30,9 @@ import {
   GraduationCap,
   ClipboardList,
   Banknote,
+  Eye,
 } from "lucide-react";
 
-// Componentes de Shadcn UI para el modal (Dialog)
 import {
   Dialog,
   DialogContent,
@@ -42,26 +42,27 @@ import {
 } from "@/components/ui/dialog";
 
 import { Spinner } from "@/components/ui/spinner";
+// Removed these imports as we'll now use a single API endpoint
+// import funcionesService from "../api/funciones.js";
+// import estudiantesService from "../api/estudiantes.js";
+// import academicosService from "../api/academicos.js";
 import { useError } from "@/contexts/ErrorContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-// Importar ProjectCard desde su nuevo archivo
 import ProjectCard, {
   getStatusBadge,
   getThematicBadge,
   renderInstitucionLogo,
 } from "./components/ProjectCard.jsx";
 
-// Import the new API service
-import cartera_proyecto from "@/api/EXCEL_QUERIES/cartera_proyecto.js"; // Correct path to your service
-
-// The API URL is now managed within cartera_proyecto.js, so we don't need it here.
-// const PROJECTS_API_URL = import.meta.env.VITE_PROJECTS_API_URL; // Remove this line
-
 export default function VisualizacionPage() {
   const [orden, setOrden] = useState("reciente");
   const [projectsData, setProjectsData] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState("todos");
+  // academicosMap will now be directly populated from the denormalized data
+  const [academicosMap, setAcademicosMap] = useState({});
+  // estudiantesMap will now be directly populated from the denormalized data
+  const [estudiantesMap, setEstudiantesMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [errorLocal, setErrorLocal] = useState(null);
   const { setError: setErrorGlobal } = useError();
@@ -74,64 +75,96 @@ export default function VisualizacionPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
-  // **** Estados para el Modal de Detalles ****
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [academicosFotos, setAcademicosFotos] = useState({}); // Changed to object for easier lookup
+  const academicosFotosCache = useRef({});
   const [loadingFotos, setLoadingFotos] = useState(false);
 
-  // Helper para formatear fecha a "31 de diciembre de 2024" para el modal
   const formatDateFull = useCallback((dateString) => {
     if (!dateString) return "Sin fecha";
-    // The new API uses "sept-24" format. We need to parse it.
-    // This is a simplistic parser, for real-world scenarios, consider a robust date library.
-    const monthMap = {
-      "ene-": "01",
-      "feb-": "02",
-      "mar-": "03",
-      "abr-": "04",
-      "may-": "05",
-      "jun-": "06",
-      "jul-": "07",
-      "ago-": "08",
-      "sept-": "09",
-      "oct-": "10",
-      "nov-": "11",
-      "dic-": "12",
-    };
-
-    let date = null;
-    if (
-      dateString.match(
-        /^(ene|feb|mar|abr|may|jun|jul|ago|sept|oct|nov|dic)-\d{2}$/i
-      )
-    ) {
-      const [monthStr, yearStr] = dateString.split("-");
-      const monthNum = monthMap[monthStr.toLowerCase() + "-"]; // Add '-' back for map key
-      if (monthNum) {
-        // Assuming current century, adjust if needed for dates before 2000
-        const fullYear = parseInt(`20${yearStr}`, 10);
-        date = new Date(fullYear, parseInt(monthNum, 10) - 1, 1); // Day 1 of the month
-      }
-    } else {
-      // Fallback for other potential date formats or if it's already a valid date string
-      try {
-        date = new Date(dateString);
-      } catch (e) {
-        console.warn("Invalid date string format:", dateString);
+    try {
+      // Ensure dateString is compatible with Date constructor
+      // For "sept-24" format, we might need a more robust parsing logic if the year isn't inferable
+      // Assuming a full date string like "2024-09-01" or "September 1, 2024" for now
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        // Use getTime() to check for invalid dates
+        // Attempt to parse 'MMM-YY' format if it's the issue
+        const parts = dateString.split("-");
+        if (parts.length === 2) {
+          const monthMap = {
+            ene: 0,
+            feb: 1,
+            mar: 2,
+            abr: 3,
+            may: 4,
+            jun: 5,
+            jul: 6,
+            ago: 7,
+            sep: 8,
+            oct: 9,
+            nov: 10,
+            dic: 11,
+          };
+          const month = monthMap[parts[0].toLowerCase()];
+          // Assuming "24" means "2024", adjust century as needed
+          const year = 2000 + parseInt(parts[1], 10);
+          if (month !== undefined && !isNaN(year)) {
+            const parsedDate = new Date(year, month, 1);
+            if (!isNaN(parsedDate.getTime())) {
+              const options = {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              };
+              return parsedDate.toLocaleDateString("es-CL", options);
+            }
+          }
+        }
         return "Fecha Inválida";
       }
+      const options = { year: "numeric", month: "long", day: "numeric" };
+      return date.toLocaleDateString("es-CL", options);
+    } catch (e) {
+      console.warn(
+        "Invalid date string for modal (full format):",
+        dateString,
+        e
+      );
+      return "Fecha Inválida";
     }
-
-    if (!date || isNaN(date.getTime())) return "Fecha Inválida";
-    const options = { year: "numeric", month: "long", day: "numeric" };
-    return date.toLocaleDateString("es-CL", options);
   }, []);
 
-  const handleCardClick = useCallback(async (project) => {
-    setSelectedProject(project);
-    setIsModalOpen(true);
-    setLoadingFotos(false); // Set to false immediately
-  }, []);
+  const MONGO_BACKEND_API_URL = import.meta.env.VITE_URL_WALLET;
+
+  const handleCardClick = useCallback(
+    async (project) => {
+      setSelectedProject(project);
+      setIsModalOpen(true);
+      setLoadingFotos(true); // Se puede mantener para un breve "flash" de carga si se desea, aunque no habrá fetch real.
+
+      const academicosInProject =
+        academicosMap[project.id_proyecto]?.profesores || [];
+
+      const FALLBACK_PHOTO_URL =
+        "https://t4.ftcdn.net/jpg/01/86/29/31/360_F_186293166_P4yk3uXQBDapbDFlR17ivpM6B1ux0fHG.jpg";
+
+      const photosForModal = {};
+      academicosInProject.forEach((academico) => {
+        photosForModal[academico.id_academico] =
+          academico.link_foto || FALLBACK_PHOTO_URL;
+      });
+
+      setAcademicosFotos(photosForModal);
+      setLoadingFotos(false); // No hay llamadas asíncronas para fotos, así que se desactiva inmediatamente.
+
+      if (academicosInProject.length === 0) {
+        setAcademicosFotos({});
+      }
+    },
+    [academicosMap] // Depende de academicosMap para asegurar que la información esté actualizada
+  );
 
   const fetchData = async () => {
     setLoading(true);
@@ -139,64 +172,93 @@ export default function VisualizacionPage() {
     setErrorGlobal(null);
 
     try {
-      // Use the getAllproyectos function from the service
-      const result = await cartera_proyecto.getAllproyectos();
-
-      if (!result.ok || !Array.isArray(result.data)) {
-        throw new Error("Invalid API response format");
+      const response = await fetch(MONGO_BACKEND_API_URL);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      const result = await response.json();
+      const fetchedProjects = Array.isArray(result.data) ? result.data : [];
 
-      const projects = result.data.map((item) => {
-        // Split academic partners and their photos
-        const partnerAcademics = item["Académic@/s-Partner"]
-          ? item["Académic@/s-Partner"]
-              .split(",")
-              .map((name) => name.trim())
-              .filter(Boolean)
-          : [];
+      const newAcademicosMap = {};
+      const newEstudiantesMap = {};
 
-        const partnerPhotos = item.link_foto_partner
-          ? item.link_foto_partner
-              .split(",")
-              .map((link) => link.trim())
-              .filter(Boolean)
-          : [];
-
-        // Ensure partner names and photos are paired correctly, or use fallback
-        const pairedPartners = partnerAcademics.map((name, index) => ({
-          name: name,
-          photo: partnerPhotos[index] || null, // Use corresponding photo or null
-        }));
-
-        return {
-          id_proyecto: item._id, // Use _id as unique identifier
-          nombre: item["Nombre Proyecto/Perfil Proyecto"],
-          tematica: item.Temática,
-          estatus: item.Estatus,
-          apoyo: item["Tipo Apoyo"],
-          detalle_apoyo: item["Detalle Apoyo"],
-          monto: item["Monto Proyecto MM$"],
-          lider_academico: item["Académic@/s-Líder"],
-          partner_academicos: pairedPartners, // Array of { name, photo } objects
-          estudiantes: item.Estudiantes, // This is a string now
-          unidad: item["Unidad Académica"],
-          nombre_convo: item["Nombre Convocatoria a la que se postuló"],
-          tipo_convocatoria: item["Tipo Convocatoria"],
-          institucion: item["Institucion Convocatoria"],
-          fecha_postulacion: item["Fecha Postulación"],
-          link_foto_lider: item.link_foto_lider,
+      fetchedProjects.forEach((project) => {
+        const projectAcademicos = [];
+        if (project["Académic@/s-Líder"]) {
+          projectAcademicos.push({
+            id_academico: project._id + "-lider",
+            nombre_completo: project["Académic@/s-Líder"],
+            link_foto: project.link_foto_lider, // <--- ESTO ES CLAVE
+          });
+        }
+        if (project["Académic@/s-Partner"]) {
+          const partners = project["Académic@/s-Partner"]
+            .split(",")
+            .map((p) => p.trim())
+            .filter(Boolean);
+          partners.forEach((partnerName, index) => {
+            projectAcademicos.push({
+              id_academico: project._id + "-partner-" + index,
+              nombre_completo: partnerName,
+              link_foto: project.link_foto_partner, // <--- ESTO TAMBIÉN ES CLAVE
+            });
+          });
+        }
+        newAcademicosMap[project._id] = {
+          id_proyecto: project._id,
+          profesores: projectAcademicos,
         };
+
+        // ... (estudiantesMap creation remains the same)
+        const projectEstudiantes = [];
+        if (project.Estudiantes) {
+          const studentNames = project.Estudiantes.split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+          studentNames.forEach((name, index) => {
+            projectEstudiantes.push({
+              id_estudiante: project._id + "-estudiante-" + index,
+              nombre: name,
+              a_paterno: "",
+            });
+          });
+        }
+        newEstudiantesMap[project._id] = projectEstudiantes;
       });
 
-      setProjectsData(projects);
+      setAcademicosMap(newAcademicosMap);
+      setEstudiantesMap(newEstudiantesMap);
+
+      // ... (transformedProjects creation remains the same)
+      const transformedProjects = fetchedProjects.map((project) => ({
+        id_proyecto: project._id,
+        nombre: project["Nombre Proyecto/Perfil Proyecto"],
+        tematica: project["Temática"],
+        estatus: project["Estatus"],
+        tipo_apoyo: project["Tipo Apoyo"],
+        detalle_apoyo: project["Detalle Apoyo"],
+        monto: project["Monto Proyecto MM$"],
+        academico_lider: project["Académic@/s-Líder"],
+        academico_partner: project["Académic@/s-Partner"],
+        estudiantes: project["Estudiantes"],
+        unidad: project["Unidad Académica"],
+        unidad_partner: project["Unidad Académica ++"],
+        nombre_convo: project["Nombre Convocatoria a la que se postuló"],
+        convocatoria: project["Tipo Convocatoria"],
+        institucion: project["Institucion Convocatoria"],
+        fecha_postulacion: project["Fecha Postulación"],
+        comentarios: project["Comentarios"],
+        validar: project["VALIDAR"],
+        link_foto_lider: project.link_foto_lider,
+        link_foto_partner: project.link_foto_partner,
+      }));
+
+      setProjectsData(transformedProjects);
     } catch (err) {
       console.error("Error fetching data for VisualizacionPage:", err);
-      // Check if err is an AxiosError and extract a more specific message if available
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "Error desconocido al cargar los proyectos.";
-      setErrorLocal(errorMessage);
+      setErrorLocal(
+        err.message || "Error desconocido al cargar los proyectos."
+      );
       setErrorGlobal({
         type: "error",
         title: "Error al cargar los proyectos",
@@ -210,9 +272,8 @@ export default function VisualizacionPage() {
     fetchData();
   }, []);
 
-  // Opciones únicas para los Selects (calculadas a partir de projectsData)
   const uniqueConvocatorias = [
-    ...new Set(projectsData.map((p) => p.nombre_convo)),
+    ...new Set(projectsData.map((p) => p.nombre_convo)), // Changed to nombre_convo as per transformation
   ]
     .filter(Boolean)
     .sort();
@@ -225,7 +286,6 @@ export default function VisualizacionPage() {
     .filter(Boolean)
     .sort();
 
-  // Lógica para filtrar proyectos según el estatus seleccionado
   const filteredProjects = projectsData.filter((project) => {
     const matchesStatus =
       selectedStatus === "todos" || project.estatus === selectedStatus;
@@ -234,7 +294,7 @@ export default function VisualizacionPage() {
       project.nombre.toLowerCase().startsWith(searchTerm.toLowerCase());
     const matchesConvocatoria =
       selectedConvocatoria === "todos" ||
-      project.nombre_convo === selectedConvocatoria;
+      project.nombre_convo === selectedConvocatoria; // Changed to nombre_convo
     const matchesTematica =
       selectedTematica === "todos" || project.tematica === selectedTematica;
     const matchesInstitucion =
@@ -250,46 +310,51 @@ export default function VisualizacionPage() {
     );
   });
 
-  // Lógica de ordenamiento
   const sortedProjects = [...filteredProjects].sort((a, b) => {
-    // We need to parse the "sept-24" format here for sorting
-    const parseDateForSort = (dateString) => {
+    // We need to parse the "Fecha Postulación" which might be "sept-24"
+    const parseDate = (dateString) => {
       if (!dateString) return null;
-      const monthMapSort = {
-        ene: 0,
-        feb: 1,
-        mar: 2,
-        abr: 3,
-        may: 4,
-        jun: 5,
-        jul: 6,
-        ago: 7,
-        sept: 8,
-        oct: 9,
-        nov: 10,
-        dic: 11,
-      };
+      // Handle "MMM-YY" format
       const parts = dateString.split("-");
       if (parts.length === 2) {
-        const monthIndex = monthMapSort[parts[0].toLowerCase()];
-        const year = parseInt(`20${parts[1]}`, 10); // Assuming 21st century
-        if (monthIndex !== undefined && !isNaN(year)) {
-          return new Date(year, monthIndex, 1); // Use day 1 for consistent comparison
+        const monthMap = {
+          ene: 0,
+          feb: 1,
+          mar: 2,
+          abr: 3,
+          may: 4,
+          jun: 5,
+          jul: 6,
+          ago: 7,
+          sep: 8,
+          oct: 9,
+          nov: 10,
+          dic: 11,
+        };
+        const month = monthMap[parts[0].toLowerCase()];
+        const year = 2000 + parseInt(parts[1], 10); // Assuming 20xx for "xx" year
+        if (month !== undefined && !isNaN(year)) {
+          return new Date(year, month, 1); // Day 1 of the month
         }
       }
-      try {
-        return new Date(dateString); // Fallback for other date formats
-      } catch (e) {
-        return null;
-      }
+      // Fallback for full date strings if they appear
+      const date = new Date(dateString);
+      return isNaN(date.getTime()) ? null : date;
     };
 
-    const dateA = parseDateForSort(a.fecha_postulacion);
-    const dateB = parseDateForSort(b.fecha_postulacion);
+    const dateA = parseDate(a.fecha_postulacion);
+    const dateB = parseDate(b.fecha_postulacion);
 
-    if (!dateA && !dateB) return 0;
-    if (!dateA) return orden === "reciente" ? 1 : -1;
-    if (!dateB) return orden === "reciente" ? -1 : 1;
+    const hasDateA = dateA !== null;
+    const hasDateB = dateB !== null;
+
+    if (!hasDateA && !hasDateB) return 0;
+    if (!hasDateA) return orden === "reciente" ? 1 : -1;
+    if (!hasDateB) return orden === "reciente" ? -1 : 1;
+
+    // Set to UTC start of day for consistent comparison, though month precision might be enough
+    dateA.setUTCHours(0, 0, 0, 0);
+    dateB.setUTCHours(0, 0, 0, 0);
 
     if (orden === "reciente") {
       return dateB.getTime() - dateA.getTime();
@@ -300,7 +365,6 @@ export default function VisualizacionPage() {
 
   const totalPages = Math.ceil(sortedProjects.length / itemsPerPage);
 
-  // Asegurarse de que la página actual no exceda el total de páginas
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(totalPages);
@@ -309,12 +373,10 @@ export default function VisualizacionPage() {
     }
   }, [currentPage, totalPages]);
 
-  // Calcular los proyectos de la página actual
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedProjects = sortedProjects.slice(startIndex, endIndex);
 
-  // Función para cambiar de página
   const handlePageChange = useCallback(
     (pageNumber) => {
       if (pageNumber >= 1 && pageNumber <= totalPages) {
@@ -324,30 +386,47 @@ export default function VisualizacionPage() {
     [totalPages]
   );
 
+  const estudiantesInModal = selectedProject
+    ? estudiantesMap[selectedProject.id_proyecto] || []
+    : [];
+
   return (
-    <div className="h-full bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-200 via-sky-300 to-blue-200">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Visualización de Proyectos
-          </h1>
-          <p className="text-gray-600">
-            Explora y gestiona todos tus proyectos de tu organización
-          </p>
+        {/* Hero Header */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2E5C8A] via-[#3B76B3] to-[#4A90D9] p-8 mb-8 shadow-2xl">
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+          <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30">
+                <Eye className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold text-white tracking-tight">
+                  Visualización de Proyectos
+                </h1>
+                <p className="text-blue-100 text-lg">
+                  Explora y gestiona todos los proyectos de tu organización
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Filters and Search */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+        {/* Filters */}
+        <div className="bg-white/40 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6 mb-6">
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[220px]">
               <div className="relative">
                 <Search
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#2E5C8A]"
                   size={18}
                 />
                 <Input
                   placeholder="Buscar proyectos..."
-                  className="pl-10 bg-gray-50 border-gray-200"
+                  className="pl-10 bg-white/70 backdrop-blur-sm border border-white/50 focus:bg-white/90 focus:border-[#4A90D9] focus:ring-1 focus:ring-[#4A90D9] focus:outline-none transition-all shadow-sm"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -359,10 +438,10 @@ export default function VisualizacionPage() {
                 value={selectedInstitucion}
                 onValueChange={setSelectedInstitucion}
               >
-                <SelectTrigger className="bg-gray-50 border-gray-200">
+                <SelectTrigger className="bg-white/60 backdrop-blur-md border-white/60 hover:bg-white/80 transition-all">
                   <SelectValue placeholder="Todas las instituciones" />
                 </SelectTrigger>
-                <SelectContent className="max-h-[400px] overflow-y-auto">
+                <SelectContent className="max-h-[400px] overflow-y-auto bg-white/95 backdrop-blur-xl">
                   <SelectItem value="todos">Todas las instituciones</SelectItem>
                   {uniqueInstituciones.map((institucion) => (
                     <SelectItem key={institucion} value={institucion}>
@@ -372,15 +451,16 @@ export default function VisualizacionPage() {
                 </SelectContent>
               </Select>
             </div>
+
             <div>
               <Select
                 value={selectedTematica}
                 onValueChange={setSelectedTematica}
               >
-                <SelectTrigger className="bg-gray-50 border-gray-200">
+                <SelectTrigger className="bg-white/60 backdrop-blur-md border-white/60 hover:bg-white/80 transition-all">
                   <SelectValue placeholder="Todas las temáticas" />
                 </SelectTrigger>
-                <SelectContent className="max-h-[400px] overflow-y-auto">
+                <SelectContent className="max-h-[400px] overflow-y-auto bg-white/95 backdrop-blur-xl">
                   <SelectItem value="todos">Todas las temáticas</SelectItem>
                   {uniqueTematicas.map((tem) => (
                     <SelectItem key={tem} value={tem}>
@@ -390,41 +470,23 @@ export default function VisualizacionPage() {
                 </SelectContent>
               </Select>
             </div>
-            {/* New Select for Convocatoria Name */}
-            <div>
-              <Select
-                value={selectedConvocatoria}
-                onValueChange={setSelectedConvocatoria}
-              >
-                <SelectTrigger className="bg-gray-50 border-gray-200">
-                  <SelectValue placeholder="Todas las convocatorias" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[400px] overflow-y-auto">
-                  <SelectItem value="todos">Todas las convocatorias</SelectItem>
-                  {uniqueConvocatorias.map((convo) => (
-                    <SelectItem key={convo} value={convo}>
-                      {convo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
             <div>
               <Select value={orden} onValueChange={setOrden}>
-                <SelectTrigger className="bg-gray-50 border-gray-200">
+                <SelectTrigger className="bg-white/60 backdrop-blur-md border-white/60 hover:bg-white/80 transition-all">
                   <SelectValue placeholder="Ordenar por" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white/95 backdrop-blur-xl">
                   <SelectItem value="reciente">
                     <span className="flex items-center gap-2">
                       <ArrowDownWideNarrow className="w-4 h-4" />
-                      Más reciente - Descendente
+                      Más reciente
                     </span>
                   </SelectItem>
                   <SelectItem value="antiguo">
                     <span className="flex items-center gap-2">
                       <ArrowUpWideNarrow className="w-4 h-4" />
-                      Más antiguo - Ascendente
+                      Más antiguo
                     </span>
                   </SelectItem>
                 </SelectContent>
@@ -433,36 +495,36 @@ export default function VisualizacionPage() {
           </div>
         </div>
 
-        {/* Tabs - Ahora manejan el estado de filtro */}
+        {/* Tabs */}
         <Tabs
           value={selectedStatus}
           onValueChange={setSelectedStatus}
           className="mb-6"
         >
-          <TabsList className="flex flex-nowrap overflow-hidden bg-white border border-gray-100 rounded-md w-full">
+          <TabsList className="flex flex-nowrap overflow-x-auto bg-white/40 backdrop-blur-lg border border-white/50 rounded-xl p-1 shadow-lg">
             <TabsTrigger
               value="todos"
-              className="text-xs px-1.5 py-1 sm:text-sm sm:px-3 sm:py-2 data-[state=active]:bg-[#2E5C8A] data-[state=active]:text-white"
+              className="text-xs px-3 py-2 sm:text-sm sm:px-4 sm:py-2.5 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2E5C8A] data-[state=active]:to-[#3B76B3] data-[state=active]:text-white rounded-lg transition-all duration-300"
             >
               Todos ({projectsData.length})
             </TabsTrigger>
             <TabsTrigger
               value="Postulado"
-              className="text-xs px-1.5 py-1 sm:text-sm sm:px-3 sm:py-2 data-[state=active]:bg-[#2E5C8A] data-[state=active]:text-white"
+              className="text-xs px-3 py-2 sm:text-sm sm:px-4 sm:py-2.5 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2E5C8A] data-[state=active]:to-[#3B76B3] data-[state=active]:text-white rounded-lg transition-all duration-300"
             >
               Postulados (
               {projectsData.filter((p) => p.estatus === "Postulado").length})
             </TabsTrigger>
             <TabsTrigger
               value="Adjudicado"
-              className="text-xs px-1.5 py-1 sm:text-sm sm:px-3 sm:py-2 data-[state=active]:bg-[#2E5C8A] data-[state=active]:text-white"
+              className="text-xs px-3 py-2 sm:text-sm sm:px-4 sm:py-2.5 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2E5C8A] data-[state=active]:to-[#3B76B3] data-[state=active]:text-white rounded-lg transition-all duration-300"
             >
               Adjudicados (
               {projectsData.filter((p) => p.estatus === "Adjudicado").length})
             </TabsTrigger>
             <TabsTrigger
               value="Perfil"
-              className="text-xs px-1.5 py-1 sm:text-sm sm:px-3 sm:py-2 data-[state=active]:bg-[#2E5C8A] data-[state=active]:text-white"
+              className="text-xs px-3 py-2 sm:text-sm sm:px-4 sm:py-2.5 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#2E5C8A] data-[state=active]:to-[#3B76B3] data-[state=active]:text-white rounded-lg transition-all duration-300"
             >
               Perfil (
               {projectsData.filter((p) => p.estatus === "Perfil").length})
@@ -470,48 +532,42 @@ export default function VisualizacionPage() {
           </TabsList>
         </Tabs>
 
-        {/* Projects Grid (Renderizado Condicional) */}
+        {/* Projects Grid */}
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <Spinner size={64} className="text-[#2E5C8A]" />
+            <div className="bg-white/40 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/50">
+              <Spinner size={64} className="text-[#2E5C8A]" />
+            </div>
           </div>
         ) : errorLocal ? (
-          <Alert variant="destructive" className="bg-red-50 text-red-700">
+          <Alert
+            variant="destructive"
+            className="bg-red-50/80 backdrop-blur-md text-red-700 border-red-200"
+          >
             <XCircle className="h-5 w-5" />
             <AlertTitle>Error al cargar proyectos</AlertTitle>
             <AlertDescription>{errorLocal}</AlertDescription>
           </Alert>
         ) : sortedProjects.length === 0 ? (
-          <Alert variant="default" className="bg-blue-50 text-blue-700">
-            <Info className="h-5 w-5" />
-            <AlertTitle>No hay proyectos</AlertTitle>
-            <AlertDescription>
-              No se encontraron proyectos para mostrar con el filtro actual.
-            </AlertDescription>
-          </Alert>
+          <div className="bg-white/40 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-12 text-center">
+            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Info className="h-10 w-10 text-[#2E5C8A]" />
+            </div>
+            <h3 className="text-xl font-bold text-[#2E5C8A] mb-2">
+              No hay proyectos
+            </h3>
+            <p className="text-gray-600">
+              No se encontraron proyectos con los filtros aplicados
+            </p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {paginatedProjects.map((project) => (
               <ProjectCard
                 key={project.id_proyecto}
                 project={project}
-                // We'll adapt academicosDelProyecto and estudiantesDelProyecto in ProjectCard itself
-                // Or, if ProjectCard needs a specific format, we can prepare it here.
-                // For now, let's simplify and pass the direct data to ProjectCard.
-                // The current ProjectCard relies on these two props, so let's adjust them.
-                academicosDelProyecto={{
-                  profesores: [
-                    project.lider_academico,
-                    ...project.partner_academicos.map((p) => p.name),
-                  ]
-                    .filter(Boolean)
-                    .map((name) => ({ nombre_completo: name })),
-                }}
-                estudiantesDelProyecto={
-                  project.estudiantes
-                    ? [{ nombre: project.estudiantes, a_paterno: "" }]
-                    : []
-                }
+                academicosDelProyecto={academicosMap[project.id_proyecto]} // Still pass this if ProjectCard expects it
+                estudiantesDelProyecto={estudiantesMap[project.id_proyecto]} // Still pass this if ProjectCard expects it
                 onClick={() => handleCardClick(project)}
               />
             ))}
@@ -519,11 +575,9 @@ export default function VisualizacionPage() {
         )}
 
         {/* Pagination */}
-        <div className="flex justify-between items-center bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <div className="text-sm text-gray-500">
-            Mostrando{" "}
-            {/* Si sortedProjects está vacío, el endIndex podría ser negativo o 0 */}
-            {Math.min(sortedProjects.length, endIndex)} de{" "}
+        <div className="flex justify-between items-center bg-white/40 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-4">
+          <div className="text-sm font-medium text-[#2E5C8A]">
+            Mostrando {Math.min(sortedProjects.length, endIndex)} de{" "}
             {sortedProjects.length} proyectos
           </div>
           <div className="flex space-x-2">
@@ -532,6 +586,7 @@ export default function VisualizacionPage() {
               size="sm"
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1 || sortedProjects.length === 0}
+              className="bg-white/60 backdrop-blur-md border-white/60 hover:bg-white/80 disabled:opacity-50"
             >
               Anterior
             </Button>
@@ -543,8 +598,8 @@ export default function VisualizacionPage() {
                 onClick={() => handlePageChange(i + 1)}
                 className={
                   currentPage === i + 1
-                    ? "bg-[#2E5C8A] text-white hover:bg-[#1E4A6F]"
-                    : ""
+                    ? "bg-gradient-to-r from-[#2E5C8A] to-[#3B76B3] text-white border-none hover:from-[#1E4A6F] hover:to-[#2E5C8A]"
+                    : "bg-white/60 backdrop-blur-md border-white/60 hover:bg-white/80"
                 }
               >
                 {i + 1}
@@ -557,6 +612,7 @@ export default function VisualizacionPage() {
               disabled={
                 currentPage === totalPages || sortedProjects.length === 0
               }
+              className="bg-white/60 backdrop-blur-md border-white/60 hover:bg-white/80 disabled:opacity-50"
             >
               Siguiente
             </Button>
@@ -564,174 +620,239 @@ export default function VisualizacionPage() {
         </div>
       </main>
 
-      {/* **** MODAL DE DETALLES DEL PROYECTO **** */}
-      {selectedProject && ( // Solo renderiza si hay un proyecto seleccionado
+      {/* Modal */}
+      {selectedProject && (
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent
-            className="w-full max-w-md md:max-w-4xl rounded-lg p-0"
-            style={{
-              maxHeight: "auto",
-              minHeight: "auto",
-              overflowY: "auto",
-              marginBottom: "2rem",
-            }}
+            className="w-full max-w-md md:max-w-6xl rounded-3xl p-0 bg-white/70 backdrop-blur-xl border-2 border-white/60 shadow-2xl overflow-hidden"
+            style={{ maxHeight: "90vh", overflowY: "auto" }}
           >
-            <DialogHeader>
-              <div className="bg-gradient-to-r from-[#275078] to-[#5296de] px-6 py-4 rounded-t-lg">
-                <DialogTitle className="text-lg md:text-xl font-bold text-white mb-1 leading-tight">
-                  {selectedProject.nombre}
-                </DialogTitle>
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center text-s md:text-sm text-white gap-1">
-                  <p>
-                    <span className="font-semibold">Unidad responsable:</span>{" "}
-                    {selectedProject.unidad || "Sin información"}
-                  </p>
-                  {getStatusBadge(selectedProject.estatus || "Sin información")}
-                </div>
-              </div>
-            </DialogHeader>
-            <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-3 md:gap-4 p-6 md:p-4">
-              {/* Columna Izquierda: Detalles e Información de Postulación */}
-              <div className="flex flex-col gap-3">
-                {/* Detalles del Proyecto */}
-                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                    <ClipboardList className="h-4 w-4 text-[#2E5C8A]" />
-                    Detalles del Proyecto
-                  </h4>
-                  <div className="flex items-center text-s text-gray-700 mb-1">
-                    <span className="font-semibold flex-shrink-0 mr-2">
-                      Temática:
-                    </span>
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#1e3a5f] via-[#2E5C8A] to-[#3B76B3] px-8 py-8">
+              <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+              <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-white/10 rounded-full blur-3xl"></div>
+
+              <div className="relative z-10 space-y-4">
+                <div>
+                  <DialogTitle className="text-2xl md:text-3xl font-bold text-white mb-3 leading-tight">
+                    {selectedProject.nombre}
+                  </DialogTitle>
+
+                  <div className="flex flex-wrap items-center gap-3 mb-4">
+                    {getStatusBadge(
+                      selectedProject.estatus || "Sin información"
+                    )}
                     {getThematicBadge(
                       selectedProject.tematica || "Sin información"
                     )}
+                    {selectedProject.institucion && (
+                      <Badge className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-white/20 backdrop-blur-md text-white border border-white/30">
+                        {renderInstitucionLogo(selectedProject.institucion)}
+                        <span>{selectedProject.institucion}</span>
+                      </Badge>
+                    )}
                   </div>
-                  <div className="flex items-center text-s text-gray-700 mb-1">
-                    <span className="font-semibold flex-shrink-0 mr-2">
-                      Institución:
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span>
-                        {selectedProject.institucion || "Sin información"}
-                      </span>
-                      {renderInstitucionLogo(selectedProject.institucion || "")}
-                    </div>
-                  </div>
-                  <p className="text-s text-gray-700 mb-1">
-                    <span className="font-semibold">Monto solicitado:</span>{" "}
-                    {selectedProject.monto !== null &&
-                    selectedProject.monto !== undefined
-                      ? `$${selectedProject.monto.toLocaleString("es-CL")}`
-                      : "Sin información"}
-                  </p>
-                  <p className="text-s text-gray-700">
-                    <span className="font-semibold">Tipo de apoyo:</span>{" "}
-                    {selectedProject.apoyo || "Sin información"}{" "}
-                    {selectedProject.detalle_apoyo &&
-                      `(${selectedProject.detalle_apoyo})`}
-                  </p>
                 </div>
 
-                {/* Información de Postulación */}
-                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-[#2E5C8A]" /> Información
-                    de Registro
-                  </h4>
-                  <p className="text-s text-gray-700 mb-1">
-                    <span className="font-semibold">Fecha de registro:</span>{" "}
-                    {formatDateFull(selectedProject.fecha_postulacion)}
-                  </p>
-                  <p className="text-s text-gray-700">
-                    <span className="font-semibold">Convocatoria:</span>{" "}
-                    {selectedProject.nombre_convo || "Sin información"}{" "}
-                    {selectedProject.tipo_convocatoria &&
-                    selectedProject.tipo_convocatoria !== ""
-                      ? `(${selectedProject.tipo_convocatoria})`
-                      : ""}
-                  </p>
-                </div>
-              </div>
-              {/* Columna Derecha: Académicos y Estudiantes Involucrados */}
-              <div className="flex flex-col gap-4">
-                {" "}
-                {/* Contenedor para ambas secciones */}
-                {/* Sección de Académicos Involucrados */}
-                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4 text-[#2E5C8A]" />
-                    Académicos Involucrados
-                  </h4>
-                  {loadingFotos ? ( // loadingFotos will be false almost instantly
-                    <div className="flex justify-center items-center h-16">
-                      <Spinner size={24} className="text-[#2E5C8A]" />
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-y-2">
-                      {selectedProject.lider_academico && (
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={
-                              selectedProject.link_foto_lider ||
-                              "https://t4.ftcdn.net/jpg/01/86/29/31/360_F_186293166_P4yk3uXQBDapbDFlR17ivpM6B1ux0fHG.jpg"
-                            }
-                            alt={`Foto de ${
-                              selectedProject.lider_academico || "académico"
-                            }`}
-                            className="w-16 h-16 object-cover rounded-full border border-gray-200 flex-shrink-0"
-                          />
-                          <p className="text-s font-medium text-gray-800 leading-tight">
-                            {selectedProject.lider_academico} (Líder)
-                          </p>
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="bg-white/15 backdrop-blur-md rounded-xl p-3 border border-white/25">
+                    <p className="text-xs text-blue-100 font-medium mb-1 uppercase tracking-wide">
+                      Unidad Responsable
+                    </p>
+                    <p className="text-white font-semibold text-sm">
+                      {selectedProject.unidad || "Sin información"}
+                      {selectedProject.unidad_partner && (
+                        <span>, {selectedProject.unidad_partner}</span>
                       )}
-                      {selectedProject.partner_academicos &&
-                        selectedProject.partner_academicos.map(
-                          (partner, index) => (
-                            <div
-                              key={partner.name + index} // Unique key for partners
-                              className="flex items-center gap-2"
-                            >
-                              <img
-                                src={
-                                  partner.photo ||
-                                  "https://t4.ftcdn.net/jpg/01/86/29/31/360_F_186293166_P4yk3uXQBDapbDFlR17ivpM6B1ux0fHG.jpg"
-                                }
-                                alt={`Foto de ${partner.name || "académico"}`}
-                                className="w-16 h-16 object-cover rounded-full border border-gray-200 flex-shrink-0"
-                              />
-                              <p className="text-s font-medium text-gray-800 leading-tight">
-                                {partner.name} (Partner)
-                              </p>
-                            </div>
-                          )
-                        )}
-                      {!selectedProject.lider_academico &&
-                        (!selectedProject.partner_academicos ||
-                          selectedProject.partner_academicos.length === 0) && (
-                          <p className="text-s text-gray-500 text-center">
-                            Sin académicos involucrados.
-                          </p>
-                        )}
-                    </div>
-                  )}
-                </div>
-                {/* Sección de Estudiantes Involucrados (NUEVA) */}
-                {selectedProject.estudiantes && ( // Check if the string exists
-                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                      <GraduationCap className="h-4 w-4 text-[#2E5C8A]" />{" "}
-                      {/* Icono de estudiante */}
-                      Estudiantes Involucrados
-                    </h4>
-                    <p className="text-s text-gray-800">
-                      {selectedProject.estudiantes}
                     </p>
                   </div>
-                )}
-              </div>{" "}
-              {/* Fin de la Columna Derecha */}
+
+                  <div className="bg-white/15 backdrop-blur-md rounded-xl p-3 border border-white/25">
+                    <p className="text-xs text-blue-100 font-medium mb-1 uppercase tracking-wide">
+                      Monto Solicitado
+                    </p>
+                    <p className="text-white font-bold text-lg">
+                      {selectedProject.monto !== null &&
+                      selectedProject.monto !== undefined
+                        ? `$${selectedProject.monto.toLocaleString("es-CL")}`
+                        : "Sin información"}
+                    </p>
+                  </div>
+
+                  <div className="bg-white/15 backdrop-blur-md rounded-xl p-3 border border-white/25">
+                    <p className="text-xs text-blue-100 font-medium mb-1 uppercase tracking-wide">
+                      Fecha de Registro
+                    </p>
+                    <p className="text-white font-semibold text-sm">
+                      {formatDateFull(selectedProject.fecha_postulacion)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8 space-y-6 bg-white/40">
+              <div className="space-y-4">
+                <h3 className="text-xl font-bold text-[#1a3d5c] flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#2E5C8A] rounded-lg flex items-center justify-center">
+                    <ClipboardList className="h-5 w-5 text-white" />
+                  </div>
+                  Información del Proyecto
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-gray-200 hover:bg-white transition-all shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 h-12 bg-[#2E5C8A] rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Banknote className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-600 font-medium mb-2 uppercase tracking-wide">
+                          Tipo de Apoyo
+                        </p>
+                        <p className="text-sm font-bold text-[#1a3d5c]">
+                          {selectedProject.tipo_apoyo || "Sin información"}
+                        </p>
+                        {selectedProject.detalle_apoyo && (
+                          <p className="text-xs text-gray-700 mt-1">
+                            {selectedProject.detalle_apoyo}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-gray-200 hover:bg-white transition-all shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 h-12 bg-[#2E5C8A] rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Calendar className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-600 font-medium mb-2 uppercase tracking-wide">
+                          Convocatoria
+                        </p>
+                        <p className="text-sm font-bold text-[#1a3d5c]">
+                          {selectedProject.nombre_convo || "Sin información"}
+                        </p>
+                        {selectedProject.convocatoria && ( // This is 'Tipo Convocatoria'
+                          <p className="text-xs text-gray-700 mt-1">
+                            {selectedProject.convocatoria}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-xl font-bold text-[#1a3d5c] flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#2E5C8A] rounded-lg flex items-center justify-center">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
+                  Equipo del Proyecto
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-gray-200 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-9 h-9 bg-[#2E5C8A] rounded-lg flex items-center justify-center">
+                        <GraduationCap className="h-5 w-5 text-white" />
+                      </div>
+                      <h4 className="text-lg font-bold text-[#1a3d5c]">
+                        Académicos
+                      </h4>
+                    </div>
+
+                    {loadingFotos ? (
+                      <div className="flex justify-center items-center h-24">
+                        <Spinner size={32} className="text-[#2E5C8A]" />
+                      </div>
+                    ) : academicosMap[selectedProject.id_proyecto]?.profesores
+                        ?.length > 0 ? (
+                      <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                        {academicosMap[
+                          selectedProject.id_proyecto
+                        ]?.profesores?.map((academico) => (
+                          <div
+                            key={academico.id_academico} // Use the generated id_academico
+                            className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200 hover:bg-white transition-all"
+                          >
+                            <img
+                              src={
+                                academicosFotos[academico.id_academico] ||
+                                academicosFotosCache.current[
+                                  academico.id_academico
+                                ] ||
+                                "https://t4.ftcdn.net/jpg/01/86/29/31/360_F_186293166_P4yk3uXQBDapbDFlR17ivpM6B1ux0fHG.jpg"
+                              }
+                              alt={`Foto de ${
+                                academico.nombre_completo || "académico"
+                              }`}
+                              className="w-14 h-14 object-cover rounded-full border-2 border-gray-200 shadow-md flex-shrink-0"
+                            />
+                            <div>
+                              <p className="text-sm font-semibold text-[#1a3d5c] leading-tight">
+                                {academico.nombre_completo}
+                              </p>
+                              <p className="text-xs text-gray-600">Académico</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-10 bg-gray-50 rounded-xl border border-gray-200">
+                        <GraduationCap className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-600 font-medium">
+                          Sin académicos
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-gray-200 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-9 h-9 bg-[#2E5C8A] rounded-lg flex items-center justify-center">
+                        <Users className="h-5 w-5 text-white" />
+                      </div>
+                      <h4 className="text-lg font-bold text-[#1a3d5c]">
+                        Estudiantes
+                      </h4>
+                    </div>
+
+                    {estudiantesInModal && estudiantesInModal.length > 0 ? (
+                      <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                        {estudiantesInModal.map((estudiante) => (
+                          <div
+                            key={estudiante.id_estudiante} // Use the generated id_estudiante
+                            className="flex items-center gap-3 bg-gray-50 px-4 py-3 rounded-xl border border-gray-200 hover:bg-white transition-all"
+                          >
+                            <div className="w-11 h-11 bg-[#2E5C8A] rounded-full flex items-center justify-center text-white font-bold text-base shadow-md">
+                              {estudiante.nombre.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-[#1a3d5c]">
+                                {`${estudiante.nombre} ${
+                                  estudiante.a_paterno || ""
+                                }`.trim()}
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                Estudiante
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-10 bg-gray-50 rounded-xl border border-gray-200">
+                        <Users className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-600 font-medium">
+                          Sin estudiantes
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
