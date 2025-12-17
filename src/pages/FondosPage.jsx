@@ -325,20 +325,21 @@ export default function FondosPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-200 via-sky-300 to-blue-200 overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h2 className="text-3xl font-bold text-gray-900">
               Fondos Concursables
             </h2>
-            <p className="text-gray-600 mt-2">
+            <p className="text-gray-700 mt-2">
               Explora y gestiona todas las convocatorias disponibles para
               financiar tus proyectos
             </p>
           </div>
+
           <Button
-            className="bg-blue-600  cursor-pointer text-white hover:bg-blue-700"
+            className="bg-[#2E5C8A] text-white backdrop-blur-xl rounded-2xl px-4 py-2 shadow-xl border border-white/40 hover:bg-[#3B76B3] hover:shadow-2xl transition-all duration-300"
             onClick={fetchAllFondosData}
           >
             <RotateCcw className="w-4 h-4 mr-2" />
@@ -346,12 +347,13 @@ export default function FondosPage() {
           </Button>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+        {/* Filtros (glass como HomePage) */}
+        <div className="bg-white/30 backdrop-blur-xl rounded-2xl p-6 shadow-xl border border-white/60 hover:bg-white/40 hover:shadow-2xl transition-all duration-300 mb-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             <div>
               <label
                 htmlFor="filterTipoFondo"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-medium text-gray-800 mb-2"
               >
                 TIPO DE FONDO:
               </label>
@@ -359,7 +361,10 @@ export default function FondosPage() {
                 value={filterTipoFondo}
                 onValueChange={setFilterTipoFondo}
               >
-                <SelectTrigger id="filterTipoFondo" className="w-full">
+                <SelectTrigger
+                  id="filterTipoFondo"
+                  className="w-full bg-white/50 backdrop-blur-md border-white/60 hover:bg-white/70 transition-all"
+                >
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -376,12 +381,15 @@ export default function FondosPage() {
             <div>
               <label
                 htmlFor="filterTrl"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-medium text-gray-800 mb-2"
               >
                 TRL:
               </label>
               <Select value={filterTrl} onValueChange={setFilterTrl}>
-                <SelectTrigger id="filterTrl" className="w-full">
+                <SelectTrigger
+                  id="filterTrl"
+                  className="w-full bg-white/50 backdrop-blur-md border-white/60 hover:bg-white/70 transition-all"
+                >
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -398,12 +406,15 @@ export default function FondosPage() {
             <div>
               <label
                 htmlFor="filterEstado"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-medium text-gray-800 mb-2"
               >
                 ESTADO:
               </label>
               <Select value={filterEstado} onValueChange={setFilterEstado}>
-                <SelectTrigger id="filterEstado" className="w-full">
+                <SelectTrigger
+                  id="filterEstado"
+                  className="w-full bg-white/50 backdrop-blur-md border-white/60 hover:bg-white/70 transition-all"
+                >
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -420,19 +431,19 @@ export default function FondosPage() {
             <div className="col-span-full sm:col-span-2 md:col-span-1 lg:col-span-2 xl:col-span-1">
               <label
                 htmlFor="searchTerm"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-medium text-gray-800 mb-2"
               >
                 BUSCAR:
               </label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
                 <Input
                   id="searchTerm"
                   type="text"
                   placeholder="Buscar por nombre"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4"
+                  className="w-full pl-10 pr-4 bg-white/50 backdrop-blur-md border-white/60 hover:bg-white/70 transition-all"
                 />
               </div>
             </div>
@@ -440,7 +451,7 @@ export default function FondosPage() {
             <div className="col-span-full sm:col-span-2 md:col-span-3 lg:col-span-1 flex items-end justify-end">
               <Button
                 onClick={resetFilters}
-                className="w-full md:w-auto px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2"
+                className="bg-[#2E5C8A] text-white backdrop-blur-xl rounded-2xl px-4 py-2 shadow-xl border border-white/40 hover:bg-[#3B76B3] hover:shadow-2xl transition-all duration-300"
               >
                 <RotateCcw className="h-4 w-4" />
                 Reiniciar Filtros
@@ -450,20 +461,28 @@ export default function FondosPage() {
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center p-8 bg-white rounded-lg shadow-sm">
-            <Spinner size={48} className="text-blue-600 mb-4" />
-            <p className="text-lg text-gray-600">
-              Cargando fondos... Por favor, espere.
-            </p>
+          <div className="bg-white/30 backdrop-blur-xl rounded-2xl p-8 shadow-xl border border-white/60 hover:bg-white/40 hover:shadow-2xl transition-all duration-300">
+            <div className="flex flex-col items-center justify-center">
+              <Spinner size={48} className="text-[#2E5C8A] mb-4" />
+              <p className="text-lg text-gray-800">
+                Cargando fondos... Por favor, espere.
+              </p>
+            </div>
           </div>
         ) : errorLocal ? (
-          <Alert variant="destructive" className="bg-red-50 text-red-700">
+          <Alert
+            variant="destructive"
+            className="bg-white/30 backdrop-blur-xl rounded-2xl shadow-xl border border-white/60 hover:bg-white/40 hover:shadow-2xl transition-all duration-300"
+          >
             <XCircle className="h-5 w-5 mr-4" />
             <AlertTitle>Error al cargar fondos</AlertTitle>
             <AlertDescription>{errorLocal}</AlertDescription>
           </Alert>
         ) : filteredFondos.length === 0 ? (
-          <Alert variant="default" className="bg-blue-50 text-blue-700">
+          <Alert
+            variant="default"
+            className="bg-white/30 backdrop-blur-xl rounded-2xl shadow-xl border border-white/60 hover:bg-white/40 hover:shadow-2xl transition-all duration-300"
+          >
             <Info className="h-5 w-5 mr-4" />
             <AlertTitle>No hay fondos</AlertTitle>
             <AlertDescription>
@@ -472,8 +491,9 @@ export default function FondosPage() {
           </Alert>
         ) : (
           <>
-            <div className="bg-white rounded-t-lg shadow-lg hidden md:block">
-              <div className="grid grid-cols-[1fr_0.8fr_0.5fr_0.8fr_0.8fr_0.8fr_auto] gap-4 p-4 bg-gray-100 border-b border-gray-200 font-semibold text-gray-700 text-sm items-center">
+            {/* Header tabla (glass) */}
+            <div className="hidden md:block bg-white/30 backdrop-blur-xl rounded-t-2xl shadow-xl border border-white/60">
+              <div className="grid grid-cols-[1fr_0.8fr_0.5fr_0.8fr_0.8fr_0.8fr_auto] gap-4 p-4 bg-white/20 border-b border-white/40 font-semibold text-gray-800 text-sm items-center">
                 <div className="text-left">Nombre del Fondo</div>
                 <div className="text-center">Tipo de Fondo</div>
                 <div className="text-center">TRL</div>
@@ -483,22 +503,24 @@ export default function FondosPage() {
                 <div className="text-center"></div>
               </div>
             </div>
-            <div className="bg-white rounded-b-lg shadow-lg overflow-hidden">
+
+            {/* Tabla/Accordion (glass) */}
+            <div className="bg-white/30 backdrop-blur-xl rounded-b-2xl shadow-xl border border-white/60 overflow-hidden hover:bg-white/40 hover:shadow-2xl transition-all duration-300">
               <Accordion type="single" collapsible className="w-full">
                 {filteredFondos.map((fondo) => (
                   <AccordionItem
                     value={`item-${fondo.id}`}
                     key={fondo.id}
-                    className="border-b border-gray-200"
+                    className="border-b border-white/40"
                   >
-                    <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto] items-center py-2 px-6 gap-4 group hover:bg-gray-50 transition-colors">
+                    <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto] items-center py-2 px-6 gap-4 group hover:bg-white/20 transition-all duration-300">
                       <AccordionTrigger className="flex items-center gap-2 text-left">
                         {renderTipoFondoLogo(fondo.tipo_nombre)}
-
                         <span className="font-medium text-gray-900 line-clamp-1">
                           {fondo.nombre}
                         </span>
                       </AccordionTrigger>
+
                       <div className="text-center">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-bold ${getTipoFondoColor(
@@ -512,13 +534,14 @@ export default function FondosPage() {
                             href={FONDO_URLS[fondo.tipo_nombre]}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 font-semibold mt-2 hover:underline text-xs line-clamp-1"
+                            className="text-blue-700 font-semibold mt-2 hover:underline text-xs line-clamp-1"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {FONDO_URLS[fondo.tipo_nombre]}
                           </a>
                         )}
                       </div>
+
                       <div className="text-center">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-bold ${getTRLColor(
@@ -532,13 +555,16 @@ export default function FondosPage() {
                             : `TRL ${fondo.trl}`}
                         </span>
                       </div>
-                      <div className="text-center text-gray-700 font-medium line-clamp-1">
+
+                      <div className="text-center text-gray-800 font-medium line-clamp-1">
                         {fondo.financiamiento + " millones" ||
                           "Sin información"}
                       </div>
+
                       <div className="text-center text-gray-700 line-clamp-1">
                         {fondo.duracion || "Sin información"}
                       </div>
+
                       <div className="text-center">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-bold ${getEstadoBadgeColor(
@@ -548,29 +574,32 @@ export default function FondosPage() {
                           {fondo.estado_vigencia}
                         </span>
                       </div>
-                      <div className="flex justify-center items-center"></div>
+
+                      <div className="flex justify-center items-center" />
                     </div>
+
                     <AccordionContent asChild>
                       <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto]">
-                        <div className="col-span-7 bg-gray-50 p-6 border-t border-gray-200">
+                        <div className="col-span-7 bg-white/20 p-6 border-t border-white/40">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                               <h4 className="font-semibold text-gray-800 mb-2 flex items-center">
                                 <Target className="w-4 h-4 mr-2 text-gray-600" />
                                 Objetivo:
                               </h4>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm text-gray-700">
                                 {fondo.objetivo ||
                                   "No se ha especificado el objetivo para este fondo."}
                               </p>
                             </div>
+
                             <div>
                               <h4 className="font-semibold text-gray-800 mb-2 flex items-center">
                                 <ClipboardList className="w-4 h-4 mr-2 text-gray-600" />
                                 Requisitos:
                               </h4>
                               {fondo.req && fondo.req !== "" ? (
-                                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
                                   {fondo.req
                                     .split(/[\r\n]/)
                                     .map((req, i) =>
@@ -580,20 +609,21 @@ export default function FondosPage() {
                                     )}
                                 </ul>
                               ) : (
-                                <p className="text-sm text-gray-600">
+                                <p className="text-sm text-gray-700">
                                   No hay requisitos detallados disponibles.
                                 </p>
                               )}
                             </div>
+
                             <div className="md:col-span-2">
                               <h4 className="font-semibold text-gray-800 mb-2 flex items-center">
                                 <Calendar className="w-4 h-4 mr-2 text-gray-600" />
                                 Fechas Importantes:
                               </h4>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm text-gray-700">
                                 Inicio: {formatDate(fondo.inicio)}
                               </p>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm text-gray-700">
                                 Cierre: {formatDate(fondo.cierre)}
                               </p>
                             </div>
